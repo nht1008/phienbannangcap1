@@ -1,0 +1,81 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "userRoles": {
+      ".write": "root.child('employees').child(auth.uid).child('position').val() == 'ADMIN'",
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId"
+      }
+    },
+    "userAccessRequests": {
+      ".read": "root.child('employees').child(auth.uid).child('position').val() == 'ADMIN'",
+      ".write": "root.child('employees').child(auth.uid).child('position').val() == 'ADMIN'"
+    },
+    "khach_hang_cho_duyet": {
+      ".read": "root.child('employees').child(auth.uid).child('position').val() == 'ADMIN'",
+      ".write": "root.child('employees').child(auth.uid).child('position').val() == 'ADMIN'",
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId"
+      }
+    },
+    "employees": {
+      ".read": "root.child('employees').child(auth.uid).exists()",
+      ".write": "root.child('employees').child(auth.uid).child('position').val() == 'ADMIN'",
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId"
+      }
+    },
+    "shopInfo": {
+      ".read": true,
+      ".write": "root.child('employees').child(auth.uid).child('position').val() == 'ADMIN'"
+    },
+    "storefrontProducts": {
+      ".read": true,
+      ".write": "root.child('employees').child(auth.uid).child('position').val() == 'ADMIN'"
+    },
+    "productOptions": {
+      ".read": true,
+      ".write": "root.child('employees').child(auth.uid).child('position').val() == 'ADMIN'"
+    },
+    "inventory": {
+      ".read": "true",
+      ".write": "root.child('employees').child(auth.uid).exists()"
+    },
+    "customers": {
+      ".read": "auth != null",
+      ".write": "root.child('employees').child(auth.uid).exists()",
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId"
+      }
+    },
+    "debts": {
+      ".read": "root.child('employees').child(auth.uid).exists()",
+      ".write": "root.child('employees').child(auth.uid).exists()"
+    },
+    "debtHistory": {
+      ".read": "root.child('employees').child(auth.uid).exists()",
+      ".write": "root.child('employees').child(auth.uid).exists()"
+    },
+    "disposalLog": {
+      ".read": "root.child('employees').child(auth.uid).exists()",
+      ".write": "root.child('employees').child(auth.uid).exists()"
+    },
+    "orders": {
+      ".read": "root.child('employees').child(auth.uid).exists() || (query.orderByChild == 'customerId' && query.equalTo == auth.uid)",
+      ".indexOn": ["customerId"],
+      "$orderId": {
+        ".write": "root.child('employees').child(auth.uid).exists() || (newData.child('customerId').val() == auth.uid && (!data.exists() || data.child('customerId').val() == auth.uid))"
+      }
+    },
+    "importHistory": {
+      ".read": "root.child('employees').child(auth.uid).exists()",
+      ".write": "root.child('employees').child(auth.uid).exists()"
+    },
+    "invoices": {
+      ".read": "auth != null",
+      ".write": "root.child('employees').child(auth.uid).exists()",
+      ".indexOn": ["customerId"]
+    }
+  }
+}

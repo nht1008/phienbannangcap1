@@ -1,0 +1,518 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hide number input spinners */
+.hide-number-spinners::-webkit-outer-spin-button,
+.hide-number-spinners::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.hide-number-spinners {
+  -moz-appearance: textfield; /* Firefox */
+}
+
+
+body {
+  font-family: var(--font-body), sans-serif;
+  font-weight: 500;
+}
+
+html[data-overall-font-size="sm"] {
+  font-size: 14px;
+}
+html[data-overall-font-size="md"] {
+  font-size: 16px; /* Default */
+}
+html[data-overall-font-size="lg"] {
+  font-size: 18px;
+}
+
+
+@layer base {
+  :root {
+    /* Cherry Blossom Light Theme */
+    --background: 330 100% 98%; /* Almost white with a hint of pink */
+    --foreground: 330 10% 30%; /* Dark, soft pink-gray for text */
+
+    --card: 0 0% 100%; /* Pure white for cards to stand out */
+    --card-foreground: 330 10% 25%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 330 10% 25%;
+
+    --primary: 340 85% 70%; /* Vibrant but soft cherry blossom pink */
+    --primary-foreground: 340 90% 25%; /* Dark pink for text on primary */
+
+    --secondary: 330 30% 92%; /* Lighter, muted pink */
+    --secondary-foreground: 340 70% 40%; /* Medium pink for text on secondary */
+
+    --muted: 330 30% 95%; /* Very light pink, almost gray */
+    --muted-foreground: 330 15% 50%; /* Muted pink-gray */
+
+    --accent: 150 40% 60%; /* Soft mint green for accent */
+    --accent-foreground: 150 50% 20%; /* Dark mint for text on accent */
+
+    --destructive: 0 70% 60%; /* A softer red */
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 130 50% 55%; /* A gentle, leafy green */
+    --success-foreground: 130 60% 95%;
+
+    --border: 330 30% 88%; /* Soft pinkish border */
+    --input: 330 50% 96%; /* Very light pink input background */
+    --ring: 340 85% 70%; /* Ring color same as primary */
+
+    --chart-1: 340 85% 70%; /* Primary Pink */
+    --chart-2: 150 40% 60%; /* Accent Mint */
+    --chart-3: 340 70% 60%; /* Darker Pink */
+    --chart-4: 340 90% 80%; /* Lighter Pink */
+    --chart-5: 150 50% 50%; /* Darker Mint */
+    
+    --radius: 0.75rem; /* Slightly more rounded corners */
+
+    /* Sidebar - Light & Airy */
+    --sidebar-background: 330 60% 97%;
+    --sidebar-foreground: 330 10% 40%;
+    --sidebar-primary: 340 85% 70%;
+    --sidebar-primary-foreground: 340 90% 25%;
+    --sidebar-accent: 330 40% 93%;
+    --sidebar-accent-foreground: 340 80% 50%;
+    --sidebar-border: 330 30% 90%;
+    --sidebar-ring: 340 85% 70%;
+  }
+
+  .dark {
+    /* Cherry Blossom Dark Theme (Sakura Night) */
+    --background: 330 15% 10%; /* Very dark, desaturated pink */
+    --foreground: 330 20% 92%; /* Light pinkish-gray text */
+
+    --card: 330 15% 15%; /* Slightly lighter dark card */
+    --card-foreground: 330 20% 92%;
+
+    --popover: 330 15% 12%;
+    --popover-foreground: 330 20% 92%;
+
+    --primary: 340 70% 65%; /* A more vibrant pink for dark mode */
+    --primary-foreground: 340 80% 10%;
+
+    --secondary: 330 15% 25%;
+    --secondary-foreground: 330 20% 85%;
+
+    --muted: 330 15% 20%;
+    --muted-foreground: 330 20% 60%;
+
+    --accent: 150 50% 60%; /* Mint accent remains vibrant */
+    --accent-foreground: 150 60% 15%;
+
+    --destructive: 0 60% 55%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 130 50% 50%;
+    --success-foreground: 130 50% 95%;
+
+    --border: 330 15% 25%;
+    --input: 330 15% 18%;
+    --ring: 340 70% 65%;
+    
+    --chart-1: 340 70% 65%;
+    --chart-2: 150 50% 60%;
+    --chart-3: 340 60% 55%;
+    --chart-4: 340 75% 75%;
+    --chart-5: 150 40% 50%;
+
+    /* Sidebar - Dark & Elegant */
+    --sidebar-background: 330 15% 8%;
+    --sidebar-foreground: 330 20% 90%;
+    --sidebar-primary: 340 70% 65%;
+    --sidebar-primary-foreground: 340 80% 10%;
+    --sidebar-accent: 330 15% 12%;
+    --sidebar-accent-foreground: 340 70% 75%;
+    --sidebar-border: 330 15% 15%;
+    --sidebar-ring: 340 70% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "liga" 1, "calt" 1; /* For Alegreya font */
+  }
+}
+
+
+@layer utilities {
+  @keyframes pulse-bg {
+    0%, 100% {
+      background-color: hsl(var(--destructive) / 0.4);
+    }
+    50% {
+      background-color: hsl(var(--destructive) / 0.7);
+    }
+  }
+  .animate-pulse-bg {
+    animation: pulse-bg 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+
+  @keyframes trophyPulse {
+    0%, 100% {
+      transform: scale(1);
+      filter: drop-shadow(0 0 5px hsl(var(--primary) / 0.5));
+    }
+    50% {
+      transform: scale(1.1);
+      filter: drop-shadow(0 0 15px hsl(var(--primary) / 0.8));
+    }
+  }
+  .animate-trophyPulse {
+    animation: trophyPulse 1.5s ease-in-out infinite;
+  }
+}
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
+  @keyframes marquee2 {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .animate-marquee {
+    animation: marquee 30s linear infinite;
+  }
+  .animate-marquee2 {
+    animation: marquee2 30s linear infinite;
+  }
+  @keyframes flash-and-grow {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 7px 3px hsl(var(--primary) / 0.4);
+    }
+    50% {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px 7px hsl(var(--primary) / 0.6);
+    }
+  }
+
+  .animate-flash-and-grow {
+    animation: flash-and-grow 1.5s ease-in-out infinite;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Seasonal Effects */
+  @keyframes fall {
+    0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+  @keyframes sparkle-anim {
+    0%, 100% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1); opacity: 1; }
+    90% { transform: scale(0.8); opacity: 0.2; }
+  }
+
+  .seasonal-bg-winter { background: linear-gradient(to bottom, #a1c4fd, #c2e9fb); }
+  .seasonal-bg-spring { background: linear-gradient(to bottom, #fddb92, #d1fdff); }
+  .seasonal-bg-summer { background: linear-gradient(to bottom, #ffecd2, #fcb69f); }
+  .seasonal-bg-autumn { background: linear-gradient(to bottom, #ffecd2, #fcb69f); }
+
+  .snowflake {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    animation-name: fall;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  .leaf {
+    position: absolute;
+    width: 15px;
+    height: 10px;
+    background-color: #e67e22;
+    border-radius: 10px 0;
+    animation-name: fall;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  .petal {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: #ffb6c1;
+    border-radius: 50% 0;
+    animation-name: fall;
+    animation-timing-function: ease-in;
+    animation-iteration-count: infinite;
+  }
+  .sparkle {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    background: #fff700;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #fff700, 0 0 20px #fff700;
+    animation-name: sparkle-anim;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Rank Badge Animations */
+@keyframes shine {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px 2px rgba(250, 204, 21, 0.7);
+  }
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 0 30px 10px rgba(250, 204, 21, 1);
+  }
+}
+
+@keyframes halo {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+    box-shadow: 0 0 40px 15px rgba(250, 204, 21, 0.5);
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.2;
+    box-shadow: 0 0 60px 25px rgba(250, 204, 21, 0.2);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-shine {
+  animation: shine 1.5s ease-in-out infinite;
+}
+
+.animate-halo {
+  animation: halo 3s ease-in-out infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+.animate-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+@keyframes wave-animation {
+    0% { transform: rotate( 0.0deg) }
+   10% { transform: rotate(14.0deg) }
+   20% { transform: rotate(-8.0deg) }
+   30% { transform: rotate(14.0deg) }
+   40% { transform: rotate(-4.0deg) }
+   50% { transform: rotate(10.0deg) }
+   60% { transform: rotate( 0.0deg) }
+  100% { transform: rotate( 0.0deg) }
+}
+
+@keyframes welcome-text-animation {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    text-shadow: 0 0 5px hsl(var(--primary) / 0.5);
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+    text-shadow: 0 0 20px hsl(var(--primary) / 0.8);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    text-shadow: 0 0 5px hsl(var(--primary) / 0.5);
+  }
+}
+
+.animate-welcome-text {
+  animation: welcome-text-animation 2.5s ease-in-out infinite;
+}
+
+@keyframes logo-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.6));
+  }
+  50% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 16px hsl(var(--primary) / 0.8));
+  }
+}
+
+.animate-logo-pulse {
+  animation: logo-pulse 2s ease-in-out infinite;
+}
+
+@keyframes shake {
+  10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+  30%, 50%, 70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  40%, 60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) infinite;
+}
+
+/* Import Tab Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.5s ease-out;
+}
