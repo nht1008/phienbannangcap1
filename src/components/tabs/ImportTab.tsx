@@ -46,6 +46,8 @@ interface LocalItemToImport {
     error?: string;
     hasPriceConflict?: boolean;
     priceAction?: 'keep' | 'update';
+    shouldUpdate?: boolean; // 🆕 Có cập nhật sản phẩm hiện tại không
+    productIdToUpdate?: string | null; // 🆕 ID của sản phẩm cần cập nhật
 }
 
 interface ImportTabProps {
@@ -59,6 +61,8 @@ interface ImportTabProps {
             salePriceVND: number; // Thêm giá bán
             batchNumber: number; // Thêm số lô hàng
             priceAction?: 'keep' | 'update';
+            shouldUpdate?: boolean; // 🆕 Có cập nhật sản phẩm hiện tại không
+            productIdToUpdate?: string | null; // 🆕 ID của sản phẩm cần cập nhật
         }[],
         totalCostVND: number,
         employeeId: string,
@@ -76,15 +80,6 @@ export function ImportTab({
     
     // Helper function to get next batch number for a specific product
     const getNextBatchNumber = useCallback((productName: string, color: string, quality?: string, size?: string, unit?: string) => {
-        console.log('🔍 getNextBatchNumber called with:', { 
-            productName, 
-            color, 
-            quality, 
-            size, 
-            unit,
-            inventorySize: inventory.length 
-        });
-
         // Tìm các sản phẩm có cùng tên và thuộc tính (KHÔNG phụ thuộc vào quantity)
         const normalizedQuality = quality === 'none' || !quality ? undefined : quality;
         const matchingProducts = inventory.filter(p => {
@@ -95,21 +90,6 @@ export function ImportTab({
                 productQuality === normalizedQuality &&
                 p.size === (size || '') &&
                 p.unit === (unit || '');
-            
-            console.log('🔍 Checking product:', {
-                productId: p.id,
-                productName: p.name,
-                productColor: p.color,
-                productQuality,
-                productSize: p.size,
-                productUnit: p.unit,
-                targetName: productName,
-                targetColor: color,
-                targetQuality: normalizedQuality,
-                targetSize: size || '',
-                targetUnit: unit || '',
-                isMatch
-            });
             
             return isMatch;
         });
@@ -126,11 +106,24 @@ export function ImportTab({
         })));
 
         if (matchingProducts.length === 0) {
-            console.log('✅ No matching products found - returning batch 1 for new product');
             return 1; // Sản phẩm hoàn toàn mới, bắt đầu từ lô 1
         }
 
-        // Lấy batch number cao nhất từ TẤT CẢ sản phẩm cùng loại và cộng 1
+        // 🆕 LOGIC MỚI: Kiểm tra có sản phẩm hết hàng và chỉ có 1 lô duy nhất không
+        const outOfStockProducts = matchingProducts.filter(p => p.quantity === 0);
+        
+        // Chỉ cập nhật khi: có sản phẩm hết hàng VÀ chỉ có 1 lô duy nhất trong nhóm
+        if (outOfStockProducts.length > 0 && matchingProducts.length === 1) {
+            // Trường hợp đặc biệt: chỉ có 1 lô duy nhất và hết hàng
+            const productToUpdate = outOfStockProducts[0];
+            return { 
+                batchNumber: productToUpdate.batchNumber || 1, 
+                shouldUpdate: true, 
+                productIdToUpdate: productToUpdate.id 
+            };
+        }
+
+        // Nếu không có sản phẩm hết hàng, tạo lô mới
         const existingBatchNumbers = matchingProducts
             .map(p => p.batchNumber || 1)
             .filter(batch => batch > 0);
@@ -138,9 +131,7 @@ export function ImportTab({
         const maxBatch = Math.max(...existingBatchNumbers);
         const nextBatch = maxBatch + 1;
         
-        console.log('✅ Found existing batches:', existingBatchNumbers, 'Max:', maxBatch, 'Next:', nextBatch);
-        
-        return nextBatch;
+        return { batchNumber: nextBatch, shouldUpdate: false, productIdToUpdate: null };
     }, [inventory]);
     
     const createNewItem = useCallback(() => {
@@ -225,8 +216,17 @@ export function ImportTab({
                               // updatedItem.price = matchedProduct.price || 0;
                               updatedItem.error = undefined;
                               
-                              // Tự động set batch number cho sản phẩm này - LUÔN LÀ LÔ MỚI
-                              updatedItem.batchNumber = getNextBatchNumber(name, color, undefined, matchedProduct.size || '', matchedProduct.unit);
+                              // Tự động set batch number cho sản phẩm này - KIỂM TRA XEM CÓ CẦN CẬP NHẬT KHÔNG
+                              const batchInfo = getNextBatchNumber(name, color, undefined, matchedProduct.size || '', matchedProduct.unit);
+                              if (typeof batchInfo === 'object') {
+                                updatedItem.batchNumber = batchInfo.batchNumber;
+                                updatedItem.shouldUpdate = batchInfo.shouldUpdate;
+                                updatedItem.productIdToUpdate = batchInfo.productIdToUpdate;
+                              } else {
+                                updatedItem.batchNumber = batchInfo;
+                                updatedItem.shouldUpdate = false;
+                                updatedItem.productIdToUpdate = null;
+                              }
                           } else {
                               updatedItem.productDetails = null;
                               updatedItem.selectedProductId = null;
@@ -311,8 +311,17 @@ export function ImportTab({
                           updatedItem.hasPriceConflict = false;
                           updatedItem.priceAction = 'keep';
                           
-                          // Tự động cập nhật batch number cho sản phẩm cụ thể này - LUÔN LÀ LÔ MỚI
-                          updatedItem.batchNumber = getNextBatchNumber(name, color, normalizedQuality, size, unit);
+                          // Tự động cập nhật batch number cho sản phẩm cụ thể này
+                          const batchInfo = getNextBatchNumber(name, color, normalizedQuality, size, unit);
+                          if (typeof batchInfo === 'object') {
+                            updatedItem.batchNumber = batchInfo.batchNumber;
+                            updatedItem.shouldUpdate = batchInfo.shouldUpdate;
+                            updatedItem.productIdToUpdate = batchInfo.productIdToUpdate;
+                          } else {
+                            updatedItem.batchNumber = batchInfo;
+                            updatedItem.shouldUpdate = false;
+                            updatedItem.productIdToUpdate = null;
+                          }
                       } else {
                           updatedItem.error = 'Sản phẩm với thuộc tính này không tồn tại.';
                           updatedItem.productDetails = null;
@@ -378,6 +387,8 @@ export function ImportTab({
                     p.unit === unit;
             });
             
+            const batchInfo = matchedProduct ? getNextBatchNumber(item.name, item.color, normalizedQuality, item.size, item.unit) : item.batchNumber;
+            
             return {
                 ...item,
                 productDetails: matchedProduct || null,
@@ -385,7 +396,9 @@ export function ImportTab({
                 error: matchedProduct ? undefined : 'Sản phẩm với thuộc tính này không tồn tại.',
                 cost: matchedProduct && matchedProduct.costPrice ? matchedProduct.costPrice / 1000 : item.cost,
                 // KHÔNG auto-fill giá bán - để người dùng tự do nhập
-                batchNumber: matchedProduct ? getNextBatchNumber(item.name, item.color, normalizedQuality, item.size, item.unit) : item.batchNumber,
+                batchNumber: typeof batchInfo === 'object' ? batchInfo.batchNumber : (typeof batchInfo === 'number' ? batchInfo : item.batchNumber),
+                shouldUpdate: typeof batchInfo === 'object' ? batchInfo.shouldUpdate : false,
+                productIdToUpdate: typeof batchInfo === 'object' ? batchInfo.productIdToUpdate : null,
             };
         })
     );
@@ -406,7 +419,7 @@ export function ImportTab({
       valid: item.name && item.color && !item.error && item.quantity > 0 && item.cost > 0 && item.price > 0
     }));
     
-    console.log('Import validation debug:', debugInfo);
+    // console.log('Import validation debug:', debugInfo); // Tắt debug log để tránh spam
     
     // CHỈ CẦN: tên, màu, không có lỗi, số lượng > 0, giá gốc > 0, giá bán > 0 (batch number sẽ tự động tính)
     return itemsToImport.every(item => 
@@ -484,40 +497,36 @@ export function ImportTab({
         salePriceVND: number; // Giá bán riêng cho lô mới
         batchNumber: number; // Số lô hàng mới
         priceAction?: 'keep' | 'update';
+        shouldUpdate?: boolean; // 🆕 Có cập nhật sản phẩm hiện tại không
+        productIdToUpdate?: string | null; // 🆕 ID của sản phẩm cần cập nhật
     }[] = validItems.map(item => {
         const costVND = Math.round((item.cost || 0) * 1000);
         const salePriceVND = Math.round((item.price || 0) * 1000); // Chuyển từ nghìn VND sang VND
         
-        // Tính toán batch number tự động dựa trên sản phẩm còn trong kho
-        const calculatedBatchNumber = getNextBatchNumber(
+        // 🔥 CRITICAL FIX: Tính toán lại batch info ngay trước khi submit
+        const normalizedQuality = item.quality === 'none' ? undefined : item.quality;
+        const freshBatchInfo = getNextBatchNumber(
             item.name, 
             item.color, 
-            item.quality, 
-            item.size, 
-            item.unit
+            normalizedQuality, 
+            item.size || '', 
+            item.unit || ''
         );
         
+        const finalBatchNumber = typeof freshBatchInfo === 'object' ? freshBatchInfo.batchNumber : freshBatchInfo;
+        const finalShouldUpdate = typeof freshBatchInfo === 'object' ? freshBatchInfo.shouldUpdate : false;
+        const finalProductIdToUpdate = typeof freshBatchInfo === 'object' ? freshBatchInfo.productIdToUpdate : null;
+        
         const result = {
-            productId: item.matchedProduct!.id,
+            productId: finalShouldUpdate && finalProductIdToUpdate ? finalProductIdToUpdate : item.matchedProduct!.id, // 🆕 Sử dụng fresh data
             quantity: item.quantity || 0,
             costPriceVND: isNaN(costVND) ? 0 : costVND,
             salePriceVND: isNaN(salePriceVND) ? 0 : salePriceVND,
-            batchNumber: calculatedBatchNumber, // Sử dụng batch number được tính tự động
-            priceAction: item.priceAction || 'keep'
+            batchNumber: finalBatchNumber, // Sử dụng fresh batch number
+            priceAction: item.priceAction || 'keep' as 'keep' | 'update',
+            shouldUpdate: finalShouldUpdate, // 🆕 Sử dụng fresh shouldUpdate
+            productIdToUpdate: finalProductIdToUpdate, // 🆕 Sử dụng fresh productIdToUpdate
         };
-        
-        console.log('Item to submit:', {
-            name: item.name,
-            color: item.color,
-            originalBatchNumber: item.batchNumber,
-            calculatedBatchNumber: calculatedBatchNumber,
-            rawCost: item.cost, // nghìn VND
-            costVND: costVND, // VND
-            rawPrice: item.price, // nghìn VND  
-            salePriceVND: salePriceVND, // VND
-            quantity: item.quantity,
-            result
-        });
         
         return result;
     });
@@ -597,9 +606,12 @@ export function ImportTab({
             availableOptions.units.length > 0;
 
           // Tính batch number tự động cho sản phẩm hiện tại
-          const autoNextBatch = item.productDetails ? 
+          const batchInfo = item.productDetails ? 
             getNextBatchNumber(item.name, item.color, item.quality, item.size, item.unit) :
             1; // Mặc định là 1 nếu chưa chọn sản phẩm
+          
+          const autoNextBatch = typeof batchInfo === 'object' ? batchInfo.batchNumber : batchInfo;
+          const willUpdate = typeof batchInfo === 'object' ? batchInfo.shouldUpdate : false;
 
           return (
             <Card key={item.key} className={`transition-all duration-300 ${
@@ -842,7 +854,7 @@ export function ImportTab({
                       {!item.productDetails && <span className="text-amber-600 text-xs ml-2">Chọn sản phẩm trước</span>}
                       {item.productDetails && (
                         <span className="text-blue-600 text-xs ml-2">
-                          Sẽ tạo lô {autoNextBatch} mới
+                          {willUpdate ? `Sẽ cập nhật lô ${autoNextBatch} hiện có (lô duy nhất hết hàng)` : `Sẽ tạo lô ${autoNextBatch} mới`}
                         </span>
                       )}
                     </label>
@@ -868,7 +880,7 @@ export function ImportTab({
                     />
                     <p className="text-sm text-gray-500 mt-1">
                       {item.productDetails ? 
-                        `Sẽ tự động tạo lô ${autoNextBatch} mới với giá bán riêng biệt` :
+                        (willUpdate ? `Sẽ cập nhật lô ${autoNextBatch} hiện có (lô duy nhất hết hàng) với số lượng và giá mới` : `Sẽ tự động tạo lô ${autoNextBatch} mới với giá bán riêng biệt`) :
                         "Chọn đầy đủ thông tin sản phẩm để xem lô hàng sẽ được tạo"
                       }
                     </p>

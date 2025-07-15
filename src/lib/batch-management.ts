@@ -4,8 +4,10 @@ import type { Product } from '@/types';
 
 /**
  * Đánh số lại lô hàng cho tất cả sản phẩm
- * Quy tắc: Lô cũ nhất = 1, lô mới nhất = số cao nhất
- * Xóa những lô hết hàng (quantity = 0)
+ * Quy tắc: 
+ * - Lô cũ nhất = 1, lô mới nhất = số cao nhất
+ * - Chỉ xóa lô hết hàng khi nhóm sản phẩm có >= 2 lô
+ * - Khi chỉ có 1 lô duy nhất, giữ lại dù hết hàng để tránh mất công thêm lại
  */
 export async function reorderBatchNumbers(): Promise<void> {
   try {
@@ -50,30 +52,49 @@ export async function reorderBatchNumbers(): Promise<void> {
     const updates: { [key: string]: any } = {};
     let totalReordered = 0;
     let totalDeleted = 0;
+    let totalKept = 0;
 
     // Xử lý từng nhóm sản phẩm
     for (const [groupKey, products] of productGroups) {
-      // Lọc bỏ sản phẩm hết hàng
+      const totalBatchesInGroup = products.length;
       const inStockProducts = products.filter(p => p.quantity > 0);
       const outOfStockProducts = products.filter(p => p.quantity <= 0);
 
-      // Xóa sản phẩm hết hàng
-      outOfStockProducts.forEach(product => {
-        updates[`inventory/${product.id}`] = null; // Xóa khỏi Firebase
-        totalDeleted++;
-        console.log(`🗑️  Xóa sản phẩm hết hàng: ${product.name} (Lô ${product.batchNumber || 'N/A'})`);
-      });
+      console.log(`📋 Nhóm "${products[0]?.name}": ${totalBatchesInGroup} lô (${inStockProducts.length} còn hàng, ${outOfStockProducts.length} hết hàng)`);
 
-      if (inStockProducts.length === 0) {
-        console.log(`📤 Nhóm "${groupKey}" không còn sản phẩm nào trong kho`);
+      // Logic mới: chỉ xóa lô hết hàng khi có >= 2 lô trong nhóm
+      if (totalBatchesInGroup >= 2) {
+        // Xóa sản phẩm hết hàng khi có nhiều lô
+        outOfStockProducts.forEach(product => {
+          updates[`inventory/${product.id}`] = null; // Xóa khỏi Firebase
+          totalDeleted++;
+          console.log(`🗑️  Xóa lô hết hàng: ${product.name} (Lô ${product.batchNumber || 'N/A'}) - Còn ${totalBatchesInGroup - 1} lô khác`);
+        });
+      } else if (totalBatchesInGroup === 1) {
+        // Giữ lại lô duy nhất dù hết hàng
+        outOfStockProducts.forEach(product => {
+          totalKept++;
+          console.log(`🔒 Giữ lại lô duy nhất: ${product.name} (Lô ${product.batchNumber || 'N/A'}) - Dù hết hàng để tránh mất công thêm lại`);
+        });
+      }
+
+      if (inStockProducts.length === 0 && totalBatchesInGroup >= 2) {
+        console.log(`📤 Nhóm "${groupKey}" không còn sản phẩm nào trong kho sau khi xóa`);
         continue;
       }
 
-      // Sắp xếp sản phẩm còn hàng theo batchNumber cũ (thứ tự nhập kho)
-      inStockProducts.sort((a, b) => (a.batchNumber || 1) - (b.batchNumber || 1));
+      // Lấy tất cả sản phẩm cần đánh số lại (bao gồm cả hết hàng nếu chỉ có 1 lô)
+      const productsToReorder = totalBatchesInGroup === 1 ? products : inStockProducts;
+
+      if (productsToReorder.length === 0) {
+        continue;
+      }
+
+      // Sắp xếp sản phẩm theo batchNumber cũ (thứ tự nhập kho)
+      productsToReorder.sort((a, b) => (a.batchNumber || 1) - (b.batchNumber || 1));
 
       // Đánh số lại từ 1
-      inStockProducts.forEach((product, index) => {
+      productsToReorder.forEach((product, index) => {
         const newBatchNumber = index + 1;
         const oldBatchNumber = product.batchNumber || 1;
         
@@ -84,7 +105,7 @@ export async function reorderBatchNumbers(): Promise<void> {
         }
       });
 
-      console.log(`✅ Nhóm "${inStockProducts[0].name}": ${inStockProducts.length} lô đã được sắp xếp`);
+      console.log(`✅ Nhóm "${productsToReorder[0].name}": ${productsToReorder.length} lô đã được sắp xếp`);
     }
 
     // Cập nhật Firebase nếu có thay đổi
@@ -92,7 +113,8 @@ export async function reorderBatchNumbers(): Promise<void> {
       await update(ref(db), updates);
       console.log(`🎯 Hoàn thành đánh số lại lô hàng:`);
       console.log(`   - ${totalReordered} lô đã được đánh số lại`);
-      console.log(`   - ${totalDeleted} sản phẩm hết hàng đã được xóa`);
+      console.log(`   - ${totalDeleted} lô hết hàng đã được xóa (chỉ khi có >= 2 lô)`);
+      console.log(`   - ${totalKept} lô hết hàng được giữ lại (vì là lô duy nhất)`);
     } else {
       console.log('✨ Không cần thay đổi gì, tất cả lô hàng đã đúng thứ tự');
     }
@@ -125,10 +147,11 @@ export function isSameProductGroup(product1: Product, product2: Product): boolea
 
 /**
  * Lấy số lô tiếp theo cho sản phẩm mới
+ * Tính cả những lô hết hàng để tránh trùng batch number
  */
 export function getNextBatchNumber(newProduct: Product, existingProducts: Product[]): number {
   const sameGroupProducts = existingProducts.filter(p => 
-    isSameProductGroup(p, newProduct) && p.quantity > 0
+    isSameProductGroup(p, newProduct) // Bỏ điều kiện p.quantity > 0 để tính cả lô hết hàng
   );
   
   if (sameGroupProducts.length === 0) {

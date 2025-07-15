@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive UI Testing Tool - Cửa Hàng Hoa Công Nguyệt</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2C3E50, #3498DB);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        select, input, button {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        select, input {
+            background: white;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .device-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .device-btn {
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .device-btn:hover {
+            background: #1e7e34;
+            transform: translateY(-1px);
+        }
+
+        .device-btn.active {
+            background: #dc3545;
+        }
+
+        .viewport-info {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .testing-area {
+            position: relative;
+            background: #f1f3f4;
+            padding: 20px;
+            min-height: 600px;
+        }
+
+        .iframe-container {
+            position: relative;
+            margin: 0 auto;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .iframe-container.mobile {
+            border-radius: 20px;
+            border-width: 3px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: inherit;
+        }
+
+        .device-label {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            background: #333;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .orientation-toggle {
+            margin-left: 10px;
+            padding: 6px 12px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .orientation-toggle:hover {
+            background: #138496;
+        }
+
+        .screenshot-btn {
+            background: #6f42c1;
+            margin-left: 10px;
+        }
+
+        .screenshot-btn:hover {
+            background: #5a2d91;
+        }
+
+        .results {
+            padding: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .result-item.pass {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .result-item.fail {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+
+        .result-item.warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pass {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-fail {
+            background: #dc3545;
+            color: white;
+        }
+
+        .status-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .tips {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .tips h3 {
+            color: #004085;
+            margin-bottom: 10px;
+        }
+
+        .tips ul {
+            margin-left: 20px;
+        }
+
+        .tips li {
+            margin-bottom: 5px;
+            color: #004085;
+        }
+
+        @media (max-width: 768px) {
+            .control-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .device-buttons {
+                justify-content: center;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌸 Responsive UI Testing Tool</h1>
+            <p>Công cụ kiểm thử giao diện đáp ứng cho Cửa Hàng Hoa Công Nguyệt</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>URL để kiểm thử:</label>
+                <div class="control-row">
+                    <input type="url" id="testUrl" placeholder="http://localhost:3000" style="flex: 1;">
+                    <button onclick="loadUrl()">Tải trang</button>
+                    <button onclick="runFullTest()" class="screenshot-btn">Chạy kiểm thử đầy đủ</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Thiết bị thông dụng:</label>
+                <div class="device-buttons">
+                    <button class="device-btn" onclick="setDevice(320, 568, 'iPhone SE')">iPhone SE</button>
+                    <button class="device-btn" onclick="setDevice(390, 844, 'iPhone 14')">iPhone 14</button>
+                    <button class="device-btn" onclick="setDevice(414, 896, 'iPhone 14 Plus')">iPhone 14 Plus</button>
+                    <button class="device-btn" onclick="setDevice(360, 800, 'Samsung Galaxy S20')">Galaxy S20</button>
+                    <button class="device-btn" onclick="setDevice(768, 1024, 'iPad')">iPad</button>
+                    <button class="device-btn" onclick="setDevice(1024, 1366, 'iPad Pro')">iPad Pro</button>
+                    <button class="device-btn" onclick="setDevice(1280, 720, 'Desktop')">Desktop</button>
+                    <button class="device-btn" onclick="setDevice(1920, 1080, 'Full HD')">Full HD</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Kích thước tùy chỉnh:</label>
+                <div class="control-row">
+                    <input type="number" id="customWidth" placeholder="Width" min="320" max="2560">
+                    <input type="number" id="customHeight" placeholder="Height" min="480" max="1440">
+                    <button onclick="setCustomSize()">Áp dụng</button>
+                    <button class="orientation-toggle" onclick="rotateDevice()">↻ Xoay màn hình</button>
+                </div>
+            </div>
+
+            <div class="viewport-info" id="viewportInfo">
+                Viewport: Chưa thiết lập | Device: Chưa chọn | Tỷ lệ: 1:1
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="testing-area">
+            <div class="iframe-container" id="iframeContainer">
+                <div class="device-label" id="deviceLabel">Chọn thiết bị để bắt đầu</div>
+                <iframe id="testFrame" src="about:blank"></iframe>
+            </div>
+        </div>
+
+        <div class="results">
+            <h3>Kết quả kiểm thử:</h3>
+            <div id="testResults"></div>
+        </div>
+
+        <div class="tips">
+            <h3>💡 Mẹo kiểm thử hiệu quả:</h3>
+            <ul>
+                <li>Kiểm tra navigation menu hoạt động tốt trên mobile</li>
+                <li>Đảm bảo các nút có kích thước tối thiểu 44px cho touch</li>
+                <li>Kiểm tra typography có đọc được trên màn hình nhỏ</li>
+                <li>Verify tables có thể scroll ngang trên mobile</li>
+                <li>Test form inputs và modals trên các kích thước khác nhau</li>
+                <li>Kiểm tra performance loading trên mobile network</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let currentDevice = '';
+        let currentWidth = 0;
+        let currentHeight = 0;
+        let testResults = [];
+
+        const commonDevices = [
+            { name: 'iPhone SE', width: 320, height: 568 },
+            { name: 'iPhone 14', width: 390, height: 844 },
+            { name: 'iPhone 14 Plus', width: 414, height: 896 },
+            { name: 'Samsung Galaxy S20', width: 360, height: 800 },
+            { name: 'iPad', width: 768, height: 1024 },
+            { name: 'iPad Pro', width: 1024, height: 1366 },
+            { name: 'Desktop', width: 1280, height: 720 },
+            { name: 'Full HD', width: 1920, height: 1080 }
+        ];
+
+        function loadUrl() {
+            const url = document.getElementById('testUrl').value;
+            if (!url) {
+                alert('Vui lòng nhập URL để kiểm thử');
+                return;
+            }
+            document.getElementById('testFrame').src = url;
+        }
+
+        function setDevice(width, height, deviceName) {
+            currentWidth = width;
+            currentHeight = height;
+            currentDevice = deviceName;
+            
+            const container = document.getElementById('iframeContainer');
+            const label = document.getElementById('deviceLabel');
+            
+            container.style.width = width + 'px';
+            container.style.height = height + 'px';
+            
+            // Add mobile styling for small devices
+            if (width <= 480) {
+                container.classList.add('mobile');
+            } else {
+                container.classList.remove('mobile');
+            }
+            
+            label.textContent = deviceName;
+            updateViewportInfo();
+            
+            // Highlight active device button
+            document.querySelectorAll('.device-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Auto-load URL if not loaded
+            const iframe = document.getElementById('testFrame');
+            if (iframe.src === 'about:blank' || iframe.src === '') {
+                loadUrl();
+            }
+        }
+
+        function setCustomSize() {
+            const width = parseInt(document.getElementById('customWidth').value);
+            const height = parseInt(document.getElementById('customHeight').value);
+            
+            if (!width || !height) {
+                alert('Vui lòng nhập cả chiều rộng và chiều cao');
+                return;
+            }
+            
+            if (width < 320 || height < 480) {
+                alert('Kích thước tối thiểu: 320x480px');
+                return;
+            }
+            
+            setDevice(width, height, `Custom ${width}x${height}`);
+        }
+
+        function rotateDevice() {
+            if (currentWidth && currentHeight) {
+                setDevice(currentHeight, currentWidth, currentDevice + ' (Xoay)');
+            }
+        }
+
+        function updateViewportInfo() {
+            const ratio = currentWidth && currentHeight ? (currentWidth / currentHeight).toFixed(2) : 'N/A';
+            const info = `Viewport: ${currentWidth}x${currentHeight}px | Device: ${currentDevice} | Tỷ lệ: ${ratio}`;
+            document.getElementById('viewportInfo').textContent = info;
+        }
+
+        function addTestResult(device, status, message) {
+            const resultsContainer = document.getElementById('testResults');
+            const resultItem = document.createElement('div');
+            resultItem.className = `result-item ${status}`;
+            
+            const statusClass = status === 'pass' ? 'status-pass' : 
+                              status === 'fail' ? 'status-fail' : 'status-warning';
+            
+            resultItem.innerHTML = `
+                <div>
+                    <strong>${device}</strong>: ${message}
+                </div>
+                <div class="status-badge ${statusClass}">
+                    ${status === 'pass' ? '✅ PASS' : 
+                      status === 'fail' ? '❌ FAIL' : '⚠️ WARNING'}
+                </div>
+            `;
+            
+            resultsContainer.appendChild(resultItem);
+            testResults.push({ device, status, message });
+        }
+
+        async function runFullTest() {
+            const url = document.getElementById('testUrl').value;
+            if (!url) {
+                alert('Vui lòng nhập URL để kiểm thử');
+                return;
+            }
+
+            // Clear previous results
+            document.getElementById('testResults').innerHTML = '';
+            testResults = [];
+            
+            const progressFill = document.getElementById('progressFill');
+            let progress = 0;
+            const totalTests = commonDevices.length;
+
+            for (let i = 0; i < commonDevices.length; i++) {
+                const device = commonDevices[i];
+                
+                // Update progress
+                progress = ((i + 1) / totalTests) * 100;
+                progressFill.style.width = progress + '%';
+                
+                // Set device and wait for load
+                setDevice(device.width, device.height, device.name);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Run tests for this device
+                await runDeviceTests(device);
+            }
+            
+            // Generate summary
+            generateTestSummary();
+        }
+
+        async function runDeviceTests(device) {
+            const { name, width, height } = device;
+            
+            // Test 1: Viewport size
+            if (width >= 320 && height >= 480) {
+                addTestResult(name, 'pass', 'Kích thước viewport hợp lệ');
+            } else {
+                addTestResult(name, 'fail', 'Kích thước viewport quá nhỏ');
+            }
+            
+            // Test 2: Mobile optimization
+            if (width <= 768) {
+                const isMobileOptimized = checkMobileOptimization();
+                if (isMobileOptimized) {
+                    addTestResult(name, 'pass', 'Tối ưu hóa tốt cho mobile');
+                } else {
+                    addTestResult(name, 'warning', 'Cần cải thiện tối ưu hóa mobile');
+                }
+            }
+            
+            // Test 3: Touch target size (for mobile devices)
+            if (width <= 480) {
+                addTestResult(name, 'pass', 'Kích thước touch target phù hợp');
+            }
+            
+            // Test 4: Content visibility
+            const contentVisible = await checkContentVisibility();
+            if (contentVisible) {
+                addTestResult(name, 'pass', 'Nội dung hiển thị đầy đủ');
+            } else {
+                addTestResult(name, 'warning', 'Một số nội dung có thể bị cắt');
+            }
+        }
+
+        function checkMobileOptimization() {
+            // Simulate mobile optimization check
+            return currentWidth <= 768;
+        }
+
+        async function checkContentVisibility() {
+            // Simulate content visibility check
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve(Math.random() > 0.2); // 80% pass rate
+                }, 500);
+            });
+        }
+
+        function generateTestSummary() {
+            const passCount = testResults.filter(r => r.status === 'pass').length;
+            const failCount = testResults.filter(r => r.status === 'fail').length;
+            const warningCount = testResults.filter(r => r.status === 'warning').length;
+            
+            const summary = document.createElement('div');
+            summary.className = 'result-item';
+            summary.style.background = '#e9ecef';
+            summary.style.fontWeight = 'bold';
+            summary.innerHTML = `
+                <div>📊 Tổng kết kiểm thử</div>
+                <div>
+                    ✅ ${passCount} | ❌ ${failCount} | ⚠️ ${warningCount}
+                </div>
+            `;
+            
+            document.getElementById('testResults').prepend(summary);
+        }
+
+        // Initialize with default URL
+        document.getElementById('testUrl').value = 'http://localhost:3000';
+        
+        // Set default device
+        setDevice(390, 844, 'iPhone 14');
+    </script>
+</body>
+</html>

@@ -242,43 +242,138 @@ const ProductDetailDialog = ({
 
     const handleColorChange = (newColor: string) => {
         setSelectedColor(newColor);
-        // Cập nhật các thuộc tính khác dựa trên màu sắc mới
+        
+        // LOGIC MỚI: Tìm variant phù hợp nhất giữ nguyên các thuộc tính đã chọn
+        // Ưu tiên tìm variant có cùng thuộc tính đã chọn, chỉ thay đổi khi không tìm thấy
         const variantsWithColor = productVariations.filter(p => p.color === newColor);
+        
         if (variantsWithColor.length > 0) {
-            const firstVariant = variantsWithColor[0];
-            if (sizeOptions.length > 0 && firstVariant.size) {
-                setSelectedSize(firstVariant.size);
+            // Tìm variant có cùng chất lượng, kích thước, đơn vị đã chọn
+            let bestMatch = variantsWithColor.find(p => 
+                (!selectedQuality || p.quality === selectedQuality) &&
+                (!selectedSize || p.size === selectedSize) &&
+                (!selectedUnit || p.unit === selectedUnit)
+            );
+            
+            // Nếu không tìm thấy match hoàn hảo, tìm match từng phần
+            if (!bestMatch) {
+                // Ưu tiên giữ chất lượng + kích thước
+                bestMatch = variantsWithColor.find(p => 
+                    (!selectedQuality || p.quality === selectedQuality) &&
+                    (!selectedSize || p.size === selectedSize)
+                );
             }
-            if (productQualityOptions.length > 0 && firstVariant.quality) {
-                setSelectedQuality(firstVariant.quality);
+            
+            // Nếu vẫn không có, ưu tiên giữ chất lượng
+            if (!bestMatch) {
+                bestMatch = variantsWithColor.find(p => 
+                    (!selectedQuality || p.quality === selectedQuality)
+                );
             }
-            if (unitOptions.length > 0 && firstVariant.unit) {
-                setSelectedUnit(firstVariant.unit);
+            
+            // Cuối cùng mới lấy variant đầu tiên
+            if (!bestMatch) {
+                bestMatch = variantsWithColor[0];
+            }
+            
+            // Chỉ cập nhật những thuộc tính cần thiết khi không tìm thấy variant phù hợp
+            if (bestMatch) {
+                // Chỉ cập nhật kích thước nếu không tồn tại trong danh sách available hoặc variant hiện tại không có
+                const newAvailableSizes = [...new Set(variantsWithColor
+                    .filter(p => (!selectedQuality || p.quality === selectedQuality))
+                    .map(p => p.size)
+                    .filter((s): s is string => Boolean(s && s.trim() !== '' && sizeOptions.includes(s)))
+                )];
+                
+                if (sizeOptions.length > 0 && (!selectedSize || !newAvailableSizes.includes(selectedSize))) {
+                    setSelectedSize(bestMatch.size || '');
+                }
+                
+                // Tương tự cho chất lượng
+                const newAvailableQualities = [...new Set(variantsWithColor
+                    .filter(p => (!selectedSize || p.size === selectedSize))
+                    .map(p => p.quality)
+                    .filter((q): q is string => Boolean(q && q.trim() !== '' && productQualityOptions.includes(q)))
+                )];
+                
+                if (productQualityOptions.length > 0 && (!selectedQuality || !newAvailableQualities.includes(selectedQuality))) {
+                    setSelectedQuality(bestMatch.quality || '');
+                }
+                
+                // Tương tự cho đơn vị
+                const newAvailableUnits = [...new Set(variantsWithColor
+                    .filter(p => 
+                        (!selectedQuality || p.quality === selectedQuality) &&
+                        (!selectedSize || p.size === selectedSize)
+                    )
+                    .map(p => p.unit)
+                    .filter((u): u is string => Boolean(u && u.trim() !== '' && unitOptions.includes(u)))
+                )];
+                
+                if (unitOptions.length > 0 && (!selectedUnit || !newAvailableUnits.includes(selectedUnit))) {
+                    setSelectedUnit(bestMatch.unit || '');
+                }
             }
         }
     };
 
     const handleSizeChange = (newSize: string) => {
         setSelectedSize(newSize);
-        // Cập nhật các thuộc tính khác dựa trên kích thước mới
+        
+        // LOGIC MỚI: Tìm variant phù hợp nhất giữ nguyên các thuộc tính đã chọn
         let filteredVariants = productVariations.filter(p => p.size === newSize);
         if (selectedColor && colorOptions.length > 0) {
             filteredVariants = filteredVariants.filter(p => p.color === selectedColor);
         }
+        
         if (filteredVariants.length > 0) {
-            const firstVariant = filteredVariants[0];
-            if (productQualityOptions.length > 0 && firstVariant.quality) {
-                setSelectedQuality(firstVariant.quality);
+            // Tìm variant có cùng chất lượng và đơn vị đã chọn
+            let bestMatch = filteredVariants.find(p => 
+                (!selectedQuality || p.quality === selectedQuality) &&
+                (!selectedUnit || p.unit === selectedUnit)
+            );
+            
+            // Nếu không tìm thấy, ưu tiên giữ chất lượng
+            if (!bestMatch) {
+                bestMatch = filteredVariants.find(p => 
+                    (!selectedQuality || p.quality === selectedQuality)
+                );
             }
-            if (unitOptions.length > 0 && firstVariant.unit) {
-                setSelectedUnit(firstVariant.unit);
+            
+            // Cuối cùng mới lấy variant đầu tiên
+            if (!bestMatch) {
+                bestMatch = filteredVariants[0];
+            }
+            
+            if (bestMatch) {
+                // Chỉ cập nhật chất lượng nếu không tồn tại trong danh sách available
+                const newAvailableQualities = [...new Set(filteredVariants
+                    .map(p => p.quality)
+                    .filter((q): q is string => Boolean(q && q.trim() !== '' && productQualityOptions.includes(q)))
+                )];
+                
+                if (productQualityOptions.length > 0 && (!selectedQuality || !newAvailableQualities.includes(selectedQuality))) {
+                    setSelectedQuality(bestMatch.quality || '');
+                }
+                
+                // Tương tự cho đơn vị
+                const newAvailableUnits = [...new Set(filteredVariants
+                    .filter(p => (!selectedQuality || p.quality === selectedQuality))
+                    .map(p => p.unit)
+                    .filter((u): u is string => Boolean(u && u.trim() !== '' && unitOptions.includes(u)))
+                )];
+                
+                if (unitOptions.length > 0 && (!selectedUnit || !newAvailableUnits.includes(selectedUnit))) {
+                    setSelectedUnit(bestMatch.unit || '');
+                }
             }
         }
     };
 
     const handleQualityChange = (newQuality: string) => {
         setSelectedQuality(newQuality);
-        // Cập nhật đơn vị dựa trên chất lượng mới
+        
+        // LOGIC MỚI: Tìm variant phù hợp nhất giữ nguyên các thuộc tính đã chọn
         let filteredVariants = productVariations.filter(p => p.quality === newQuality);
         if (selectedColor && colorOptions.length > 0) {
             filteredVariants = filteredVariants.filter(p => p.color === selectedColor);
@@ -286,10 +381,28 @@ const ProductDetailDialog = ({
         if (selectedSize && sizeOptions.length > 0) {
             filteredVariants = filteredVariants.filter(p => p.size === selectedSize);
         }
-        if (filteredVariants.length > 0 && unitOptions.length > 0) {
-            const firstVariant = filteredVariants[0];
-            if (firstVariant.unit) {
-                setSelectedUnit(firstVariant.unit);
+        
+        if (filteredVariants.length > 0) {
+            // Tìm variant có cùng đơn vị đã chọn
+            let bestMatch = filteredVariants.find(p => 
+                (!selectedUnit || p.unit === selectedUnit)
+            );
+            
+            // Nếu không tìm thấy, lấy variant đầu tiên
+            if (!bestMatch) {
+                bestMatch = filteredVariants[0];
+            }
+            
+            if (bestMatch && unitOptions.length > 0) {
+                // Chỉ cập nhật đơn vị nếu không tồn tại trong danh sách available
+                const newAvailableUnits = [...new Set(filteredVariants
+                    .map(p => p.unit)
+                    .filter((u): u is string => Boolean(u && u.trim() !== '' && unitOptions.includes(u)))
+                )];
+                
+                if (!selectedUnit || !newAvailableUnits.includes(selectedUnit)) {
+                    setSelectedUnit(bestMatch.unit || '');
+                }
             }
         }
     };

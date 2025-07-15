@@ -180,20 +180,20 @@ export function EmployeeCartSheet({
               Quản lý giỏ hàng và tiến hành thanh toán.
             </SheetDescription>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 shadow-lg">
-            {/* Customer Selection - Made wider for horizontal layout */}
-            <div className="space-y-1 w-96">{/* Increased width significantly */}
+          <div className="flex flex-col gap-3 p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 shadow-lg">
+            {/* Customer Selection - Full width on mobile */}
+            <div className="w-full">
               <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between text-left h-auto min-h-[48px] p-3">{/* Reduced height */}
+                  <Button variant="outline" className="w-full justify-between text-left h-auto min-h-[48px] p-3">
                       <div className="flex items-center w-full">
                           {selectedCustomer ? (
                               <div className="flex items-center justify-between w-full min-w-0">
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1">
                                       <div className="font-medium text-sm">{selectedCustomer.name}</div>
                                       {selectedCustomer.phone && (
                                         <>
-                                          <span className="text-xs text-muted-foreground">•</span>
+                                          <span className="hidden sm:inline text-xs text-muted-foreground">•</span>
                                           <div className="text-xs text-muted-foreground">{selectedCustomer.phone}</div>
                                         </>
                                       )}
@@ -283,54 +283,91 @@ export function EmployeeCartSheet({
                 </DialogContent>
               </Dialog>
             </div>
-            {/* Customer Action - Buttons side by side */}
-            <div className="flex flex-col items-center space-y-2">
-                <div className="flex gap-2">
-                    {/* Tier Discount Button */}
-                    {appliedTierDiscount.amount > 0 ? (
-                      <Button 
-                        onClick={handleCancelTierDiscount}
-                        className="w-20 h-8 text-xs"
-                        variant="destructive"
-                      >
-                        Hủy ưu đãi
-                      </Button>
-                    ) : (
-                      <Button 
-                        onClick={handleApplyTierDiscount}
-                        disabled={!selectedCustomer || !selectedCustomer.tier || selectedCustomer.tier === 'Vô danh'}
-                        className="w-20 h-8 text-xs"
-                        variant="outline"
-                      >
-                        Áp dụng
-                      </Button>
-                    )}
-                    
-                    {/* Points Redeem Button */}
-                    {redeemedPoints.value > 0 ? (
-                      <Button
-                        onClick={handleCancelRedemption}
-                        className="w-20 h-8 text-xs"
-                        variant="destructive"
-                      >
-                        Hủy điểm
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => setIsRedeemDialogOpen(true)}
-                        disabled={!selectedCustomer}
-                        className="w-20 h-8 text-xs"
-                        variant="outline"
-                      >
-                        Đổi điểm
-                      </Button>
-                    )}
+            
+            {/* Mobile: Full width row with buttons and controls */}
+            <div className="flex flex-col space-y-3 sm:hidden">
+              {/* Customer Actions Row */}
+              <div className="flex gap-2">
+                  {/* Tier Discount Button */}
+                  {appliedTierDiscount.amount > 0 ? (
+                    <Button 
+                      onClick={handleCancelTierDiscount}
+                      className="flex-1 h-8 text-xs"
+                      variant="destructive"
+                    >
+                      Hủy ưu đãi
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={handleApplyTierDiscount}
+                      disabled={!selectedCustomer || !selectedCustomer.tier || selectedCustomer.tier === 'Vô danh'}
+                      className="flex-1 h-8 text-xs"
+                      variant="outline"
+                    >
+                      Áp dụng ưu đãi
+                    </Button>
+                  )}
+                  
+                  {/* Points Redeem Button */}
+                  {redeemedPoints.value > 0 ? (
+                    <Button
+                      onClick={handleCancelRedemption}
+                      className="flex-1 h-8 text-xs"
+                      variant="destructive"
+                    >
+                      Hủy điểm
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => setIsRedeemDialogOpen(true)}
+                      disabled={!selectedCustomer}
+                      className="flex-1 h-8 text-xs"
+                      variant="outline"
+                    >
+                      Đổi điểm
+                    </Button>
+                  )}
+              </div>
+              
+              {/* Payment Method and Discount Row */}
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground block mb-1">Thanh toán</label>
+                  <ToggleGroup
+                    type="single"
+                    value={paymentMethod}
+                    onValueChange={(value) => {
+                      if (value) setPaymentMethod(value);
+                    }}
+                    className="flex gap-1 w-full"
+                  >
+                    <ToggleGroupItem value="Tiền mặt" aria-label="Tiền mặt" className="flex-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-8 text-xs">
+                      Tiền mặt
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="Chuyển khoản" aria-label="Chuyển khoản" className="flex-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-8 text-xs">
+                      Chuyển khoản
+                    </ToggleGroupItem>
+                  </ToggleGroup>
                 </div>
-                
+                <div className="w-24">
+                  <label className="text-xs text-muted-foreground block mb-1">Giảm giá</label>
+                  <Input
+                    type="number"
+                    value={totalDiscount}
+                    onChange={(e) => setTotalDiscount(e.target.value)}
+                    placeholder="0"
+                    className="h-8 w-full text-xs text-center hide-number-spinners"
+                    min="0"
+                  />
+                </div>
+              </div>
+              
+              {/* Info display for mobile */}
+              <div className="space-y-1">
                 {/* Tier Info */}
                 {selectedCustomer && selectedCustomer.tier && selectedCustomer.tier !== 'Vô danh' && (
-                  <div className="text-xs text-center max-w-40">
-                    <div className="text-muted-foreground text-xs leading-tight">
+                  <div className="text-xs text-center">
+                    <div className="text-muted-foreground">
                       {(() => {
                         const tierInfo = {
                           'Đầy tớ': '1/tháng',
@@ -343,18 +380,17 @@ export function EmployeeCartSheet({
                         return tierInfo[selectedCustomer.tier as keyof typeof tierInfo] || '';
                       })()}
                     </div>
-                    {/* Show remaining uses if available */}
                     {tierDiscountInfo.period && typeof tierDiscountInfo.remaining === 'number' && (
-                      <div className="text-green-600 font-semibold text-xs">
+                      <div className="text-green-600 font-semibold">
                         Còn {tierDiscountInfo.remaining}/{tierDiscountInfo.period}
                       </div>
                     )}
                   </div>
                 )}
                 
-                {/* Points Info - Moved here */}
+                {/* Points Info */}
                 {selectedCustomer && selectedCustomer.points && selectedCustomer.points > 0 && (
-                  <div className="flex items-center text-xs text-amber-600 font-semibold">
+                  <div className="flex items-center justify-center text-xs text-amber-600 font-semibold">
                     <Star className="w-3 h-3 mr-1" />
                     {redeemedPoints.points > 0 ? (
                       <>
@@ -367,36 +403,126 @@ export function EmployeeCartSheet({
                     )}
                   </div>
                 )}
+              </div>
             </div>
-            {/* Payment Method - More compact */}
-            <div className="space-y-1 w-32">
-              <ToggleGroup
-                type="single"
-                value={paymentMethod}
-                onValueChange={(value) => {
-                  if (value) setPaymentMethod(value);
-                }}
-                className="flex flex-col gap-1"
-              >
-                <ToggleGroupItem value="Tiền mặt" aria-label="Tiền mặt" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-7 text-xs">
-                  Tiền mặt
-                </ToggleGroupItem>
-                <ToggleGroupItem value="Chuyển khoản" aria-label="Chuyển khoản" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-7 text-xs">
-                  CK
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-            {/* Total Discount - More compact */}
-            <div className="space-y-1 w-24">
-              <label className="text-xs text-muted-foreground">Giảm giá</label>
-              <Input
-                type="number"
-                value={totalDiscount}
-                onChange={(e) => setTotalDiscount(e.target.value)}
-                placeholder="0"
-                className="h-7 w-full text-xs text-center hide-number-spinners"
-                min="0"
-              />
+
+            {/* Desktop: Horizontal layout */}
+            <div className="hidden sm:flex items-center gap-3">
+              {/* Customer Action - Buttons side by side */}
+              <div className="flex flex-col items-center space-y-2">
+                  <div className="flex gap-2">
+                      {/* Tier Discount Button */}
+                      {appliedTierDiscount.amount > 0 ? (
+                        <Button 
+                          onClick={handleCancelTierDiscount}
+                          className="w-20 h-8 text-xs"
+                          variant="destructive"
+                        >
+                          Hủy ưu đãi
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={handleApplyTierDiscount}
+                          disabled={!selectedCustomer || !selectedCustomer.tier || selectedCustomer.tier === 'Vô danh'}
+                          className="w-20 h-8 text-xs"
+                          variant="outline"
+                        >
+                          Áp dụng
+                        </Button>
+                      )}
+                      
+                      {/* Points Redeem Button */}
+                      {redeemedPoints.value > 0 ? (
+                        <Button
+                          onClick={handleCancelRedemption}
+                          className="w-20 h-8 text-xs"
+                          variant="destructive"
+                        >
+                          Hủy điểm
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => setIsRedeemDialogOpen(true)}
+                          disabled={!selectedCustomer}
+                          className="w-20 h-8 text-xs"
+                          variant="outline"
+                        >
+                          Đổi điểm
+                        </Button>
+                      )}
+                  </div>
+                  
+                  {/* Tier Info */}
+                  {selectedCustomer && selectedCustomer.tier && selectedCustomer.tier !== 'Vô danh' && (
+                    <div className="text-xs text-center max-w-40">
+                      <div className="text-muted-foreground text-xs leading-tight">
+                        {(() => {
+                          const tierInfo = {
+                            'Đầy tớ': '1/tháng',
+                            'Nông dân': 'Max 50k',
+                            'Chủ đồn điền': 'Max 100k, 1/tuần',
+                            'Thương gia': 'Max 150k, 2/tháng',
+                            'Phú ông': 'Max 200k, 3/năm',
+                            'Đại gia': 'Max 250k, 4/năm'
+                          };
+                          return tierInfo[selectedCustomer.tier as keyof typeof tierInfo] || '';
+                        })()}
+                      </div>
+                      {/* Show remaining uses if available */}
+                      {tierDiscountInfo.period && typeof tierDiscountInfo.remaining === 'number' && (
+                        <div className="text-green-600 font-semibold text-xs">
+                          Còn {tierDiscountInfo.remaining}/{tierDiscountInfo.period}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Points Info - Moved here */}
+                  {selectedCustomer && selectedCustomer.points && selectedCustomer.points > 0 && (
+                    <div className="flex items-center text-xs text-amber-600 font-semibold">
+                      <Star className="w-3 h-3 mr-1" />
+                      {redeemedPoints.points > 0 ? (
+                        <>
+                          <span className="line-through">{selectedCustomer.points}</span>
+                          <span className="mx-1">→</span>
+                          <span>{selectedCustomer.points - redeemedPoints.points}</span>
+                        </>
+                      ) : (
+                        <span>{selectedCustomer.points}</span>
+                      )}
+                    </div>
+                  )}
+              </div>
+              {/* Payment Method - More compact */}
+              <div className="space-y-1 w-32">
+                <ToggleGroup
+                  type="single"
+                  value={paymentMethod}
+                  onValueChange={(value) => {
+                    if (value) setPaymentMethod(value);
+                  }}
+                  className="flex flex-col gap-1"
+                >
+                  <ToggleGroupItem value="Tiền mặt" aria-label="Tiền mặt" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-7 text-xs">
+                    Tiền mặt
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="Chuyển khoản" aria-label="Chuyển khoản" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-7 text-xs">
+                    CK
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+              {/* Total Discount - More compact */}
+              <div className="space-y-1 w-24">
+                <label className="text-xs text-muted-foreground">Giảm giá</label>
+                <Input
+                  type="number"
+                  value={totalDiscount}
+                  onChange={(e) => setTotalDiscount(e.target.value)}
+                  placeholder="0"
+                  className="h-7 w-full text-xs text-center hide-number-spinners"
+                  min="0"
+                />
+              </div>
             </div>
           </div>
         </SheetHeader>
@@ -415,11 +541,10 @@ export function EmployeeCartSheet({
                       <TableRow>
                         <TableHead className="w-12">STT</TableHead>
                         <TableHead className="min-w-[200px]">Sản phẩm</TableHead>
-                        <TableHead className="min-w-[120px]">Thuộc tính</TableHead>
-                        <TableHead className="min-w-[80px]">Lô hàng</TableHead>
+                        <TableHead className="min-w-[120px] hidden lg:table-cell">Thuộc tính</TableHead>
+                        <TableHead className="min-w-[80px] hidden xl:table-cell">Lô hàng</TableHead>
                         <TableHead className="text-center w-[120px]">Số lượng</TableHead>
                         <TableHead className="text-right min-w-[80px]">Đơn giá</TableHead>
-                        <TableHead className="text-center w-[90px]">Giảm giá</TableHead>
                         <TableHead className="text-right min-w-[100px]">Thành tiền</TableHead>
                         <TableHead className="text-center w-[40px]">Xóa</TableHead>
                       </TableRow>
@@ -441,17 +566,22 @@ export function EmployeeCartSheet({
                                   className="w-10 h-10 rounded-md object-cover aspect-square border"
                                   onError={(e) => ((e.target as HTMLImageElement).src = 'https://placehold.co/40x40.png')}
                                 />
-                                <div>
-                                    <p className="font-semibold text-foreground text-sm leading-tight">{item.name}</p>
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-semibold text-foreground text-sm leading-tight truncate">{item.name}</p>
+                                    {/* Hiển thị thuộc tính trên mobile */}
+                                    <div className="lg:hidden text-xs text-muted-foreground mt-1">
+                                      {[item.color, item.quality, item.size].filter(Boolean).join(' - ')}
+                                      {item.batchNumber && <span className="block">Lô: {item.batchNumber}</span>}
+                                    </div>
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="py-2 align-middle text-sm">
+                            <TableCell className="py-2 align-middle text-sm hidden lg:table-cell">
                               <div className="text-foreground text-xs font-medium">
                                 {[item.color, item.quality, item.size].filter(Boolean).join(' - ')}
                               </div>
                             </TableCell>
-                            <TableCell className="py-2 align-middle text-sm">
+                            <TableCell className="py-2 align-middle text-sm hidden xl:table-cell">
                               {item.batchNumber || 'N/A'}
                             </TableCell>
                             <TableCell className="text-center py-2 align-middle">
@@ -488,26 +618,13 @@ export function EmployeeCartSheet({
                                 </Button>
                               </div>
                             </TableCell>
-                            <TableCell className="text-right py-2 align-middle text-sm">{item.price.toLocaleString('vi-VN')}</TableCell>
-                            <TableCell className="text-center py-2 align-middle">
-                              <Input
-                                id={`desktop-item-discount-${item.id}`}
-                                type="number"
-                                value={typeof item.itemDiscount === 'number' ? (item.itemDiscount / 1000).toString() : ""}
-                                onChange={(e) => handleItemDiscountInputChange(item.id, e.target.value)}
-                                min="0"
-                                step="0.1"
-                                className="h-7 w-20 bg-card text-xs p-1 hide-number-spinners text-center"
-                                placeholder="Nghìn"
-                              />
+                            <TableCell className="text-right py-2 align-middle text-sm">
+                              <div className="font-medium">{item.price.toLocaleString('vi-VN')}</div>
+                              <div className="text-xs text-muted-foreground">VNĐ</div>
                             </TableCell>
-                            <TableCell className={cn("text-right py-2 align-middle font-semibold text-sm",(item.itemDiscount || 0) > 0 ? "text-green-600" : "text-primary")}>
-                              {itemFinalTotal.toLocaleString('vi-VN')}
-                              {(item.itemDiscount || 0) > 0 && (
-                                  <p className="text-xs text-destructive font-normal normal-case">
-                                      (từ {itemOriginalTotal.toLocaleString('vi-VN')})
-                                  </p>
-                              )}
+                            <TableCell className="text-right py-2 align-middle font-semibold text-sm text-primary">
+                              <div className="font-semibold">{itemFinalTotal.toLocaleString('vi-VN')}</div>
+                              <div className="text-xs text-muted-foreground">VNĐ</div>
                             </TableCell>
                             <TableCell className="text-center py-2 align-middle">
                               <Button
@@ -581,8 +698,8 @@ export function EmployeeCartSheet({
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                        <div className="flex items-end justify-between gap-4">
-                          <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-1">
                             <Button
                               type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0"
                               onClick={() => onUpdateCartQuantity(item.id, (item.quantityInCart - 1).toString())}
@@ -606,31 +723,21 @@ export function EmployeeCartSheet({
                               <Plus className="h-4 w-4" />
                             </Button>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Input
-                              id={`mobile-item-discount-${item.id}`} type="number"
-                              value={typeof item.itemDiscount === 'number' ? (item.itemDiscount / 1000).toString() : ""}
-                              onChange={(e) => handleItemDiscountInputChange(item.id, e.target.value)}
-                              min="0" step="0.1"
-                              className="h-8 w-20 bg-card text-xs p-1 hide-number-spinners text-center" placeholder="Giảm (Nghìn)"
-                            />
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground">Đơn giá</div>
+                            <p className="font-medium text-sm">{item.price.toLocaleString('vi-VN')} VNĐ</p>
                           </div>
                           <div className="text-right">
-                            <p className={cn("font-semibold text-sm", (item.itemDiscount || 0) > 0 ? "text-green-600" : "text-primary")}>
-                              {itemFinalTotal.toLocaleString('vi-VN')}
+                            <div className="text-xs text-muted-foreground">Thành tiền</div>
+                            <p className="font-semibold text-sm text-primary">
+                              {itemFinalTotal.toLocaleString('vi-VN')} VNĐ
                             </p>
-                            {(item.itemDiscount || 0) > 0 && (
-                              <p className="text-xs text-destructive font-normal">
-                                (từ {itemOriginalTotal.toLocaleString('vi-VN')})
-                            </p>
-                          )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="border-t mt-4 pt-4"></div>
+                    );
+                  })}
+                </div>
               </div>
             </ScrollArea>
           )}

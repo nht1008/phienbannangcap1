@@ -18,6 +18,7 @@ export interface Product {
 }
 
 export interface CartItem extends Product {
+  quality: string; // Override to make required
   quantityInCart: number;
   itemDiscount?: number;
   notes?: string;
@@ -52,7 +53,7 @@ export interface Supplier {
 export interface InvoiceCartItem {
   id: string;
   name: string;
-  quality?: string; 
+  quality: string; // Changed from optional to required with empty string as default
   quantityInCart: number;
   price: number; 
   costPrice?: number;

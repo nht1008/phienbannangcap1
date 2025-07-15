@@ -61,39 +61,39 @@ export function TopSpenderMarquee({ customers, invoices, debts }: TopSpenderMarq
     return null;
   }
 
-  const marqueeTitle = `🏆 VINH DANH KHÁCH HÀNG CHI TIÊU NHIỀU NHẤT THÁNG ${currentMonth}/${currentYear} 🏆`;
+  const marqueeTitle = `🏆 KHÁCH HÀNG CHI TIÊU NHIỀU NHẤT THÁNG ${currentMonth}/${currentYear} 🏆`;
+
+  const spendersList = topSpenders.map((spender, index) => (
+    <span key={index} className="mx-8 flex items-center whitespace-nowrap">
+      <span className={cn(
+        "flex items-center justify-center h-6 w-6 rounded-full text-sm font-bold mr-2",
+        index === 0 && "bg-yellow-400 text-yellow-900",
+        index === 1 && "bg-gray-300 text-gray-800",
+        index === 2 && "bg-orange-400 text-orange-900",
+        index > 2 && "bg-gray-600 text-white"
+      )}>
+        {index + 1}
+      </span>
+      <span className="font-semibold text-white">{spender.name}:</span>
+      <span className="ml-2 font-bold text-green-300">{spender.monthlySpent.toLocaleString('vi-VN')} VNĐ</span>
+    </span>
+  ));
 
   const marqueeContent = (
-    <>
+    <div className="flex items-center whitespace-nowrap">
       <span className="mx-8 font-bold text-yellow-300">{marqueeTitle}</span>
-      <span className="text-gray-500">•</span>
-      {topSpenders.map((spender, index) => (
-        <React.Fragment key={index}>
-          <span className="mx-8 flex items-center">
-            <span className={cn(
-              "flex items-center justify-center h-6 w-6 rounded-full text-sm font-bold mr-2",
-              index === 0 && "bg-yellow-400 text-yellow-900",
-              index === 1 && "bg-gray-300 text-gray-800",
-              index === 2 && "bg-orange-400 text-orange-900",
-              index > 2 && "bg-gray-600 text-white"
-            )}>
-              {index + 1}
-            </span>
-            <span className="font-semibold text-white">{spender.name}:</span>
-            <span className="ml-2 font-bold text-green-300">{spender.monthlySpent.toLocaleString('vi-VN')} VNĐ</span>
-          </span>
-          <span className="text-gray-500">•</span>
-        </React.Fragment>
-      ))}
-    </>
+      <span className="text-gray-500 mx-4">•</span>
+      {spendersList}
+      <span className="text-gray-500 mx-4">•</span>
+    </div>
   );
 
   return (
     <div className="relative flex overflow-hidden bg-gray-800/90 backdrop-blur-sm border-b border-t border-gray-700 py-2 shadow-lg">
-      <div className="animate-marquee whitespace-nowrap flex">
+      <div className="animate-marquee whitespace-nowrap">
         {marqueeContent}
       </div>
-      <div className="absolute top-0 left-0 animate-marquee2 whitespace-nowrap flex">
+      <div className="absolute top-0 animate-marquee2 whitespace-nowrap" style={{ left: '100%' }}>
         {marqueeContent}
       </div>
     </div>

@@ -1,8 +1,47 @@
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap');
+@import '../styles/samsung-galaxy-s8-mobile-fix.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Samsung Galaxy S8+ Specific Optimizations */
+@media screen and (device-width: 360px) and (device-height: 740px) and (-webkit-device-pixel-ratio: 3),
+       screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  body {
+    font-size: 16px !important;
+    line-height: 1.5;
+    min-width: 360px;
+  }
+}
+
+/* Force mobile layout on small screens */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px !important;
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  body {
+    font-size: 14px !important;
+    overflow-x: hidden;
+    width: 100vw;
+    max-width: 100vw;
+  }
+  
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
 
 /* Hide number input spinners */
 .hide-number-spinners::-webkit-outer-spin-button,
@@ -13,6 +52,43 @@
 
 .hide-number-spinners {
   -moz-appearance: textfield; /* Firefox */
+}
+
+/* Mobile scroll optimization */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: scroll;
+  overscroll-behavior-y: contain;
+}
+
+/* Ensure touch scroll works on iOS/Safari */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+  transform: translateZ(0);
+}
+
+/* Dialog scroll container */
+.dialog-scroll-container {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Mobile dialog optimizations */
+@media (max-width: 768px) {
+  .mobile-dialog-content {
+    max-height: 85vh !important;
+    margin: 1rem;
+  }
+  
+  .mobile-scroll-area {
+    height: calc(85vh - 120px);
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 
@@ -190,18 +266,19 @@ html[data-overall-font-size="lg"] {
   }
 }
   @keyframes marquee {
-    from { transform: translateX(0); }
-    to { transform: translateX(-100%); }
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
   }
   @keyframes marquee2 {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
   }
   .animate-marquee {
     animation: marquee 30s linear infinite;
   }
   .animate-marquee2 {
     animation: marquee2 30s linear infinite;
+    animation-delay: 15s;
   }
   @keyframes flash-and-grow {
     0%, 100% {
@@ -515,4 +592,124 @@ html[data-overall-font-size="lg"] {
 
 .animate-slide-in-right {
   animation: slide-in-right 0.5s ease-out;
+}
+
+/* =================================
+   Responsive Design Utilities
+   ================================= */
+
+/* Mobile-friendly utilities */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .input-responsive {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 16px; /* Prevents zoom on iOS */
+    border-radius: 0.5rem;
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--background));
+    transition: all 0.2s;
+  }
+
+  .input-responsive:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+  }
+
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+  }
+
+  .card-responsive {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  }
+
+  .bottom-nav-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+
+  @media (min-width: 768px) {
+    .mobile-only {
+      display: none;
+    }
+
+    .desktop-only {
+      display: block;
+    }
+
+    .input-responsive {
+      font-size: 1rem;
+      padding: 1rem 1rem;
+    }
+
+    .card-responsive {
+      padding: 1.5rem;
+    }
+  }
+
+  /* Touch-friendly button sizing */
+  .touch-button {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    touch-action: manipulation;
+  }
+
+  /* Responsive text sizing */
+  .text-responsive {
+    font-size: 0.875rem;
+  }
+
+  @media (min-width: 768px) {
+    .text-responsive {
+      font-size: 1rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .text-responsive {
+      font-size: 1.125rem;
+    }
+  }
+
+  /* iOS specific fixes */
+  @supports (-webkit-touch-callout: none) {
+    .input-responsive {
+      font-size: 16px !important; /* Prevent zoom on iOS Safari */
+    }
+    
+    .touch-button {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+  }
 }

@@ -45,7 +45,6 @@ const PointsTab = dynamic(() => import('@/components/tabs/PointsTab').then(mod =
 import { SetNameDialog } from '@/components/auth/SetNameDialog';
 import { LoadingScreen } from '@/components/shared/LoadingScreen';
 import { MainSidebar } from '@/components/layout/MainSidebar';
-import { LockScreen } from '@/components/shared/LockScreen';
 import { SettingsDialog, type OverallFontSize, type NumericDisplaySize } from '@/components/settings/SettingsDialog';
 import { ProductDialogs } from '@/components/products/ProductDialogs';
 import { DebtDialogs } from '@/components/debt/DebtDialogs';
@@ -101,7 +100,7 @@ import {
   SidebarInset,
   useSidebar
 } from '@/components/ui/sidebar';
-import { PanelLeft, ChevronsLeft, ChevronsRight, LogOut, UserCircle, Settings, Lock, ShoppingCart, Store, Pencil, Trash2, PlusCircle, MoreHorizontal } from 'lucide-react';
+import { PanelLeft, ChevronsLeft, ChevronsRight, LogOut, UserCircle, Settings, ShoppingCart, Store, Pencil, Trash2, PlusCircle, MoreHorizontal } from 'lucide-react';
 import { TopSpenderMarquee } from '@/components/shared/TopSpenderMarquee';
 import { db, auth } from '@/lib/firebase';
 import { ref, onValue, set, push, update, get, child, remove, query, orderByChild, equalTo } from "firebase/database";
@@ -260,8 +259,6 @@ interface FleurManagerLayoutContentProps {
   analysisFilter: ActivityDateTimeFilter;
   isUserInfoDialogOpen: boolean;
   setIsUserInfoDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  isScreenLocked: boolean;
-  setIsScreenLocked: React.Dispatch<React.SetStateAction<boolean>>;
   isSettingsDialogOpen: boolean;
   setIsSettingsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   overallFontSize: OverallFontSize;
@@ -289,6 +286,8 @@ interface FleurManagerLayoutContentProps {
       salePriceVND: number; // Thêm giá bán
       batchNumber: number; // Thêm batch number tự động
       priceAction?: 'keep' | 'update';
+      shouldUpdate?: boolean; // 🆕 Có cập nhật sản phẩm hiện tại không
+      productIdToUpdate?: string | null; // 🆕 ID của sản phẩm cần cập nhật
     }[], 
     totalCostVND: number, 
     employeeId: string, 
@@ -348,7 +347,7 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
     currentUser, activeTab, setActiveTab, inventory, customersData, enhancedCustomersData, ordersData, invoicesData, debtsData, employeesData, disposalLogEntries, productSalesSummaryData, identifiedSlowMovingProductsData, customerInsightsData, salesByHourData,
     shopInfo, isLoadingShopInfo, authLoading, isLoadingAccessRequest, cart, customerCart, productNameOptions, colorOptions, productQualityOptions, sizeOptions,
     unitOptions, storefrontProducts, storefrontProductIds, invoiceFilter, orderFilter, analysisFilter, isUserInfoDialogOpen, setIsUserInfoDialogOpen,
-    isScreenLocked, setIsScreenLocked, isSettingsDialogOpen, setIsSettingsDialogOpen, overallFontSize,
+    isSettingsDialogOpen, setIsSettingsDialogOpen, overallFontSize,
     setOverallFontSize, numericDisplaySize, setNumericDisplaySize, isCurrentUserAdmin, currentUserEmployeeData, isCurrentUserCustomer, hasFullAccessRights,
     filteredInvoicesForInvoiceTab, filteredDebtsForDebtTab, filteredOrdersForOrderTab, filteredInvoicesForAnalysis, filteredDisposalLogForAnalysis,
     handleCreateInvoice, handleAddProductOption,
@@ -519,6 +518,7 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
                   <AnalysisTab
                     invoices={filteredInvoicesForAnalysis}
                     inventory={inventory}
+                    disposalLogEntries={filteredDisposalLogForAnalysis}
                     customerInsights={customerInsightsData}
                     filter={analysisFilter}
                     onFilterChange={handleAnalysisFilterChange}
@@ -561,13 +561,15 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
         />
         <SidebarInset>
           <div className="flex flex-col h-screen">
+            {/* Fixed Sidebar Trigger for mobile - always visible at top left */}
+            <SidebarTrigger className="md:hidden fixed top-4 left-4 z-50 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg rounded-lg p-2 transition-all duration-200">
+              <PanelLeft className="h-5 w-5" />
+            </SidebarTrigger>
+            
             <TopSpenderMarquee customers={customersData} invoices={invoicesData} debts={debtsData} />
             <main className="flex-1 overflow-y-auto no-scrollbar">
               <div className="flex items-center mb-4 print:hidden px-4 pt-4 lg:px-6 lg:pt-6">
-                <SidebarTrigger className="md:hidden mr-4">
-                  <PanelLeft />
-                </SidebarTrigger>
-                <h2 className="text-3xl font-bold text-foreground font-headline">{isCurrentUserCustomer && activeTab === 'Đơn hàng' ? 'Đơn hàng của tôi' : activeTab}</h2>
+                <h2 className="text-3xl font-bold text-foreground font-headline ml-12 md:ml-0">{isCurrentUserCustomer && activeTab === 'Đơn hàng' ? 'Đơn hàng của tôi' : activeTab}</h2>
               </div>
               <div className="min-h-[calc(100vh-8rem)]">
                 {activeTab === 'Gian hàng' && (
@@ -690,23 +692,6 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
       ) : (
         <>
           <TooltipProvider delayDuration={0}>
-              <Tooltip>
-              <TooltipTrigger asChild>
-                  <Button
-                  onClick={() => setIsScreenLocked(true)}
-                  className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-xl hover:bg-primary/90 active:bg-primary/80 transition-transform duration-150 ease-in-out hover:scale-105 print:hidden"
-                  size="icon"
-                  aria-label="Khóa màn hình"
-                  >
-                  <Lock className="h-7 w-7" />
-                  </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="bg-card text-card-foreground">
-                  <p>Khóa màn hình</p>
-              </TooltipContent>
-              </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider delayDuration={0}>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Button
@@ -734,13 +719,6 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
         </>
       )}
 
-      <LockScreen
-        isOpen={isScreenLocked}
-        onUnlock={() => setIsScreenLocked(false)}
-        currentUserEmail={currentUser?.email || null}
-        signIn={signIn}
-        currentUserName={currentUser?.displayName}
-      />
       </div>
   );
 });
@@ -781,7 +759,6 @@ export default function FleurManagerPage() {
 
 
   const [isUserInfoDialogOpen, setIsUserInfoDialogOpen] = useState(false);
-  const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [overallFontSize, setOverallFontSize] = useState<OverallFontSize>('md');
   const [numericDisplaySize, setNumericDisplaySize] = useState<NumericDisplaySize>('text-2xl');
@@ -1126,6 +1103,22 @@ export default function FleurManagerPage() {
       setStorefrontProductIds(snapshot.val() || {});
     }));
 
+    // --- PRODUCT OPTIONS (FOR ALL USERS) ---
+    const productOptionRefs = {
+      'productOptions/productNames': setProductNameOptions,
+      'productOptions/colors': setColorOptions,
+      'productOptions/qualities': setProductQualityOptions,
+      'productOptions/sizes': setSizeOptions,
+      'productOptions/units': setUnitOptions,
+    };
+
+    Object.entries(productOptionRefs).forEach(([path, setter]) => {
+      const dbRef = ref(db, path);
+      subscriptions.push(onValue(dbRef, (snapshot) => {
+        setter(snapshot.exists() ? Object.keys(snapshot.val()).sort((a, b) => a.localeCompare(b)) : []);
+      }));
+    });
+
     // --- ROLE-SPECIFIC DATA ---
     if (isCurrentUserCustomer) {
       // --- Customer-only Data ---
@@ -1180,21 +1173,6 @@ export default function FleurManagerPage() {
       loadFullDataFor('invoices', setInvoicesData);
       loadFullDataFor('debts', setDebtsData);
       loadFullDataFor('disposalLog', setDisposalLogEntries);
-
-      const productOptionRefs = {
-        'productOptions/productNames': setProductNameOptions,
-        'productOptions/colors': setColorOptions,
-        'productOptions/qualities': setProductQualityOptions,
-        'productOptions/sizes': setSizeOptions,
-        'productOptions/units': setUnitOptions,
-      };
-
-      Object.entries(productOptionRefs).forEach(([path, setter]) => {
-        const dbRef = ref(db, path);
-        subscriptions.push(onValue(dbRef, (snapshot) => {
-          setter(snapshot.exists() ? Object.keys(snapshot.val()).sort((a, b) => a.localeCompare(b)) : []);
-        }));
-      });
     }
 
     // Cleanup function
@@ -1604,7 +1582,7 @@ export default function FleurManagerPage() {
     const stockItem = inventory.find(i => i.id === item.id);
 
     if (!stockItem || stockItem.quantity <= 0) {
-      toast({ title: "Hết hàng", description: `Sản phẩm "${item.name} ${item.color} ${item.quality} ${item.size} ${item.unit}" đã hết hàng!`, variant: "destructive", duration: 2000 });
+      toast({ title: "Hết hàng", description: `Sản phẩm "${item.name} ${item.color} ${item.quality || ''} ${item.size} ${item.unit}" đã hết hàng!`, variant: "destructive", duration: 2000 });
       return;
     }
 
@@ -1613,10 +1591,15 @@ export default function FleurManagerPage() {
       if (newQuantityInCart <= stockItem.quantity) {
         onUpdateCartQuantity(item.id, newQuantityInCart.toString());
       } else {
-        toast({ title: "Số lượng tối đa", description: `Không đủ số lượng "${item.name} ${item.color} ${item.quality} ${item.size} ${item.unit}" trong kho (Còn: ${stockItem.quantity}).`, variant: "destructive", duration: 2000 });
+        toast({ title: "Số lượng tối đa", description: `Không đủ số lượng "${item.name} ${item.color} ${item.quality || ''} ${item.size} ${item.unit}" trong kho (Còn: ${stockItem.quantity}).`, variant: "destructive", duration: 2000 });
       }
     } else {
-      setCart(prevCart => [...prevCart, { ...item, quantityInCart: 1, itemDiscount: 0 }]);
+      setCart(prevCart => [...prevCart, { 
+        ...item, 
+        quality: item.quality || '', // Ensure quality is never undefined
+        quantityInCart: 1, 
+        itemDiscount: 0 
+      }]);
     }
     // No longer need to set temporary animation state here.
   }, [cart, inventory, toast, onUpdateCartQuantity]);
@@ -1690,11 +1673,23 @@ export default function FleurManagerPage() {
       if (!invoiceId) {
         throw new Error("Không thể tạo ID cho hóa đơn mới.");
       }
-      const itemsForDb: InvoiceCartItem[] = invoiceCartItems.map(item => ({ id: item.id, name: item.name, quality: item.quality, quantityInCart: item.quantityInCart, price: item.price, costPrice: item.costPrice ?? 0, images: item.images, color: item.color, size: item.size, unit: item.unit, itemDiscount: item.itemDiscount || 0 }));
+      const itemsForDb = invoiceCartItems.map(item => ({ 
+        id: item.id, 
+        name: item.name, 
+        quality: item.quality || '', 
+        quantityInCart: item.quantityInCart, 
+        price: item.price, 
+        costPrice: item.costPrice ?? 0, 
+        images: item.images, 
+        color: item.color, 
+        size: item.size, 
+        unit: item.unit, 
+        itemDiscount: item.itemDiscount || 0 
+      })) as InvoiceCartItem[];
       const newInvoiceData: Omit<Invoice, 'id'> = {
         customerId: customerId,
         customerName: normalizedCustomerName,
-        items: itemsForDb,
+        items: itemsForDb as any,
         total: finalTotal,
         date: new Date().toISOString(),
         paymentMethod,
@@ -1899,6 +1894,8 @@ export default function FleurManagerPage() {
       salePriceVND: number; // Thêm giá bán
       batchNumber: number; // Batch number đã được tính tự động trong frontend
       priceAction?: 'keep' | 'update';
+      shouldUpdate?: boolean; // 🆕 Có cập nhật sản phẩm hiện tại không
+      productIdToUpdate?: string | null; // 🆕 ID của sản phẩm cần cập nhật
     }[], 
     totalCostVND: number, 
     employeeId: string, 
@@ -1914,6 +1911,8 @@ export default function FleurManagerPage() {
           costPriceVND: item.costPriceVND,
           salePriceVND: item.salePriceVND, // Log giá bán
           batchNumber: item.batchNumber, // Log số lô hàng đã được tính tự động
+          shouldUpdate: item.shouldUpdate, // 🆕 DEBUG
+          productIdToUpdate: item.productIdToUpdate, // 🆕 DEBUG
           isNaN_quantity: isNaN(item.quantity),
           isNaN_costPriceVND: isNaN(item.costPriceVND),
           isNaN_salePriceVND: isNaN(item.salePriceVND)
@@ -1948,65 +1947,99 @@ export default function FleurManagerPage() {
       );
       
       const updates: { [key: string]: any } = {}; 
+      let updatedProductsCount = 0;
+      let newProductsCount = 0;
+      
       for (const importItem of itemsToSubmit) { 
-        const productSnapshot = await get(child(ref(db), `inventory/${importItem.productId}`)); 
-        if (productSnapshot.exists()) { 
-          const currentProduct = productSnapshot.val(); 
+        // 🆕 LOGIC MỚI: Kiểm tra xem có cần cập nhật sản phẩm hiện tại không
+        if (importItem.shouldUpdate && importItem.productIdToUpdate) {
+          // CẬP NHẬT sản phẩm hết hàng trực tiếp
+          console.log(`🔄 Updating existing product ${importItem.productId} (same as productIdToUpdate: ${importItem.productIdToUpdate})`);
           
-          console.log(`🔨 Creating new batch for product ${importItem.productId}:`, {
-            currentProduct: currentProduct,
-            autoBatchNumber: importItem.batchNumber, // Batch number đã được tính tự động
-            quantity: importItem.quantity,
-            costPriceVND: importItem.costPriceVND,
-            salePriceVND: importItem.salePriceVND
-          });
-          
-          // LUÔN TẠO SẢN PHẨM MỚI với batch number tự động và giá riêng biệt
-          const newProductRef = push(ref(db, 'inventory'));
-          
-          // Tạo object an toàn, loại bỏ undefined values
-          const newProductData: any = {
-            name: currentProduct.name,
-            color: currentProduct.color,
-            size: currentProduct.size || '',
-            unit: currentProduct.unit || '',
-            quantity: importItem.quantity, // Số lượng của lô mới
-            costPrice: importItem.costPriceVND, // Giá gốc của lô mới (VND)
-            price: importItem.salePriceVND, // Giá bán của lô mới (VND)
-            batchNumber: importItem.batchNumber, // Số lô hàng mới
-            images: currentProduct.images || [],
-            description: currentProduct.description || ''
-          };
-          
-          // Chỉ thêm quality nếu nó có giá trị hợp lệ
-          if (currentProduct.quality && currentProduct.quality !== 'none') {
-            newProductData.quality = currentProduct.quality;
-          }
-          
-          console.log(`🔨 Creating new product data:`, newProductData);
-          
-          // Đảm bảo không có NaN values
-          if (isNaN(newProductData.quantity) || isNaN(newProductData.costPrice) || isNaN(newProductData.price) || isNaN(newProductData.batchNumber)) {
-            console.error(`NaN detected for new product batch:`, {
-              quantity: newProductData.quantity,
-              costPrice: newProductData.costPrice,
-              price: newProductData.price,
-              batchNumber: newProductData.batchNumber,
-              importItem
+          const existingProductSnapshot = await get(child(ref(db), `inventory/${importItem.productId}`));
+          if (existingProductSnapshot.exists()) {
+            const existingProduct = existingProductSnapshot.val();
+            console.log(`🔨 Updating out of stock product:`, {
+              productId: importItem.productId,
+              currentQuantity: existingProduct.quantity,
+              newQuantity: importItem.quantity,
+              currentCostPrice: existingProduct.costPrice,
+              newCostPrice: importItem.costPriceVND,
+              currentPrice: existingProduct.price,
+              newPrice: importItem.salePriceVND,
+              batchNumber: existingProduct.batchNumber
             });
-            continue; // Skip this item
+            
+            updates[`inventory/${importItem.productId}/quantity`] = importItem.quantity;
+            updates[`inventory/${importItem.productId}/costPrice`] = importItem.costPriceVND;
+            updates[`inventory/${importItem.productId}/price`] = importItem.salePriceVND;
+            
+            updatedProductsCount++;
+            console.log(`✅ Will update existing product with ID ${importItem.productId} - Batch ${importItem.batchNumber}`);
+          } else {
+            console.error(`❌ Product to update ${importItem.productId} not found in database`);
           }
-          
-          updates[`inventory/${newProductRef.key}`] = newProductData;
-          
-          console.log(`✅ Will create new product with ID ${newProductRef.key} - Auto Batch ${importItem.batchNumber}`);
-        } else { 
-          console.warn(`Sản phẩm ID ${importItem.productId} không tìm thấy trong kho khi nhập hàng. Bỏ qua cập nhật cho sản phẩm này.`); 
-        } 
+        } else {
+          // TẠO SẢN PHẨM MỚI như bình thường
+          const productSnapshot = await get(child(ref(db), `inventory/${importItem.productId}`)); 
+          if (productSnapshot.exists()) { 
+            const currentProduct = productSnapshot.val(); 
+            
+            console.log(`🔨 Creating new batch for product ${importItem.productId}:`, {
+              currentProduct: currentProduct,
+              autoBatchNumber: importItem.batchNumber,
+              quantity: importItem.quantity,
+              costPriceVND: importItem.costPriceVND,
+              salePriceVND: importItem.salePriceVND
+            });
+            // Tạo sản phẩm mới với batch number tự động và giá riêng biệt
+            const newProductRef = push(ref(db, 'inventory'));
+            
+            // Tạo object an toàn, loại bỏ undefined values
+            const newProductData: any = {
+              name: currentProduct.name,
+              color: currentProduct.color,
+              size: currentProduct.size || '',
+              unit: currentProduct.unit || '',
+              quantity: importItem.quantity, // Số lượng của lô mới
+              costPrice: importItem.costPriceVND, // Giá gốc của lô mới (VND)
+              price: importItem.salePriceVND, // Giá bán của lô mới (VND)
+              batchNumber: importItem.batchNumber, // Số lô hàng mới
+              images: currentProduct.images || [],
+              description: currentProduct.description || ''
+            };
+            
+            // Chỉ thêm quality nếu nó có giá trị hợp lệ
+            if (currentProduct.quality && currentProduct.quality !== 'none') {
+              newProductData.quality = currentProduct.quality;
+            }
+            
+            console.log(`🔨 Creating new product data:`, newProductData);
+            
+            // Đảm bảo không có NaN values
+            if (isNaN(newProductData.quantity) || isNaN(newProductData.costPrice) || isNaN(newProductData.price) || isNaN(newProductData.batchNumber)) {
+              console.error(`NaN detected for new product batch:`, {
+                quantity: newProductData.quantity,
+                costPrice: newProductData.costPrice,
+                price: newProductData.price,
+                batchNumber: newProductData.batchNumber,
+                importItem
+              });
+              continue; // Skip this item
+            }
+            
+            updates[`inventory/${newProductRef.key}`] = newProductData;
+            
+            newProductsCount++;
+            console.log(`✅ Will create new product with ID ${newProductRef.key} - Auto Batch ${importItem.batchNumber}`);
+          } else { 
+            console.warn(`Sản phẩm ID ${importItem.productId} không tìm thấy trong kho khi nhập hàng. Bỏ qua cập nhật cho sản phẩm này.`); 
+          }
+        }
       } 
       if (Object.keys(updates).length > 0) { 
         await update(ref(db), updates); 
-        console.log(`✅ Successfully created ${Object.keys(updates).filter(key => key.startsWith('inventory/')).length} new product batches`);
+        console.log(`✅ Successfully updated ${updatedProductsCount} products and created ${newProductsCount} new product batches`);
       }
       
       // TODO: Add import history logging once Firebase rules are updated
@@ -2029,10 +2062,21 @@ export default function FleurManagerPage() {
       // };
       // await set(ref(db, `importHistory/${Date.now()}`), importRecord);
       
-      const newBatchCount = Object.keys(updates).filter(key => key.startsWith('inventory/')).length;
+      // Tạo thông báo chi tiết dựa trên loại hành động
+      let description = "";
+      if (updatedProductsCount > 0 && newProductsCount > 0) {
+        description = `Đã cập nhật ${updatedProductsCount} lô duy nhất hết hàng và tạo ${newProductsCount} lô hàng mới. Công nợ đã được cập nhật.`;
+      } else if (updatedProductsCount > 0) {
+        description = `Đã cập nhật ${updatedProductsCount} lô duy nhất hết hàng (không tạo lô mới). Công nợ đã được cập nhật.`;
+      } else if (newProductsCount > 0) {
+        description = `Đã tạo ${newProductsCount} lô hàng mới. Công nợ đã được cập nhật.`;
+      } else {
+        description = "Không có thay đổi nào được thực hiện.";
+      }
+      
       toast({ 
         title: "Thành công", 
-        description: `Đã tạo ${newBatchCount} lô hàng mới với batch number tự động. Công nợ đã được cập nhật.`, 
+        description: description, 
         variant: "default", 
         duration: 3000 
       }); 
@@ -2635,7 +2679,13 @@ export default function FleurManagerPage() {
                    return prevCart;
               }
           }
-          return [...prevCart, { ...product, quantityInCart: quantity, itemDiscount: 0, notes }];
+          return [...prevCart, { 
+            ...product, 
+            quality: product.quality || '', // Ensure quality is never undefined
+            quantityInCart: quantity, 
+            itemDiscount: 0, 
+            notes 
+          }];
       });
       toast({
           title: "Đã thêm vào giỏ",
@@ -2923,7 +2973,7 @@ export default function FleurManagerPage() {
           cart={cart} customerCart={customerCart} productNameOptions={productNameOptions} colorOptions={colorOptions} productQualityOptions={productQualityOptions}
           sizeOptions={sizeOptions} unitOptions={unitOptions} storefrontProducts={storefrontProducts} storefrontProductIds={storefrontProductIds} invoiceFilter={invoiceFilter}
           orderFilter={orderFilter} analysisFilter={analysisFilter} isUserInfoDialogOpen={isUserInfoDialogOpen}
-          setIsUserInfoDialogOpen={setIsUserInfoDialogOpen} isScreenLocked={isScreenLocked} setIsScreenLocked={setIsScreenLocked}
+          setIsUserInfoDialogOpen={setIsUserInfoDialogOpen}
           isSettingsDialogOpen={isSettingsDialogOpen} setIsSettingsDialogOpen={setIsSettingsDialogOpen}
           overallFontSize={overallFontSize} setOverallFontSize={setOverallFontSize} numericDisplaySize={numericDisplaySize}
           setNumericDisplaySize={setNumericDisplaySize} isCurrentUserAdmin={isCurrentUserAdmin}

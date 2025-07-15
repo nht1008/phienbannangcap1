@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import {
   Sidebar,
@@ -10,6 +10,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   DropdownMenu,
@@ -55,18 +56,32 @@ export const MainSidebar = React.memo(({
   setIsSettingsDialogOpen,
   handleSignOut,
 }: MainSidebarProps) => {
+  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
+  const { setOpenMobile } = useSidebar();
+
+  const handleTabClick = (tabName: TabName) => {
+    setActiveTab(tabName);
+    // Auto-collapse sidebar after selecting a tab
+    setOpenMobile(false);
+  };
 
   return (
-    <Sidebar collapsible="icon" className="print:hidden shadow-lg" side="left">
-      <SidebarHeader className="h-52 flex items-center justify-center shadow-md bg-primary/5 border-b border-primary/20 group-data-[state=expanded]:px-4 group-data-[state=collapsed]:px-0">
+    <Sidebar 
+      collapsible="icon" 
+      className="print:hidden shadow-lg" 
+      side="left"
+      data-testid="main-sidebar"
+    >
+      <SidebarHeader className="h-32 md:h-52 flex items-center justify-center shadow-md bg-primary/5 border-b border-primary/20 group-data-[state=expanded]:px-4 group-data-[state=collapsed]:px-0">
         {shopInfo && shopInfo.logoUrl ? (
           <Image
             src={shopInfo.logoUrl}
             alt={shopInfo.name || "Shop Logo"}
             width={192}
             height={192}
-            className="object-contain rounded-sm"
+            className="object-contain rounded-sm w-24 h-24 md:w-48 md:h-48"
             data-ai-hint="brand logo"
+            data-testid="shop-logo"
             priority
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -80,11 +95,12 @@ export const MainSidebar = React.memo(({
           {navItems.map(item => (
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton
-                onClick={() => setActiveTab(item.name)}
+                onClick={() => handleTabClick(item.name)}
                 isActive={activeTab === item.name}
                 tooltip={{ children: item.name, side: "right", align: "center" }}
+                data-testid={`nav-item-${item.name.replace(/\s+/g, '-').toLowerCase()}`}
                 className={cn(
-                  'relative rounded-lg group transition-all duration-200',
+                  'relative rounded-lg group transition-all duration-200 min-h-[44px] touch-manipulation',
                   activeTab === item.name
                     ? 'bg-primary text-primary-foreground shadow-lg'
                     : 'text-sidebar-foreground hover:bg-primary/25 hover:text-primary-foreground hover:scale-105',
@@ -103,39 +119,98 @@ export const MainSidebar = React.memo(({
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-2 border-t border-sidebar-border sticky bottom-0 bg-sidebar">
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              className="w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              tooltip={{ children: "Tùy chọn khác", side: "right", align: "center" }}
-            >
-              <MoreHorizontal className="h-5 w-5" />
-              <span>Tùy chọn</span>
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side="top"
-            align="start"
-            className="w-56 mb-2 ml-2 bg-popover text-popover-foreground"
+      <SidebarFooter className="p-2 border-t border-sidebar-border sticky bottom-0 bg-sidebar relative">
+        {/* Custom Options Menu for better mobile compatibility */}
+        <div className="relative">
+          <button
+            onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
+            className="w-full flex items-center gap-2 px-3 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground min-h-[48px] transition-all duration-200 active:bg-sidebar-accent/80"
+            data-testid="sidebar-options-button"
+            style={{
+              WebkitTapHighlightColor: 'transparent',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+              touchAction: 'manipulation'
+            }}
           >
-            {currentUser && (
-              <DropdownMenuItem onClick={() => setIsUserInfoDialogOpen(true)}>
-                <UserCircle className="mr-2 h-4 w-4" />
-                <span>{currentUser.displayName || "Tài khoản"}</span>
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={() => setIsSettingsDialogOpen(true)}>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Cài đặt</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:bg-destructive/20 focus:text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Đăng xuất</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <MoreHorizontal className="h-5 w-5" />
+            <span>Tùy chọn</span>
+          </button>
+          
+          {/* Custom dropdown menu */}
+          {isOptionsMenuOpen && (
+            <>
+              {/* Backdrop to close menu */}
+              <div 
+                className="fixed inset-0 z-40"
+                onClick={() => setIsOptionsMenuOpen(false)}
+                style={{ touchAction: 'manipulation' }}
+              />
+              
+              {/* Menu content */}
+              <div 
+                className="absolute bottom-full left-2 mb-2 w-56 bg-popover text-popover-foreground border border-border rounded-lg shadow-lg z-50"
+                style={{
+                  touchAction: 'manipulation',
+                  WebkitOverflowScrolling: 'touch'
+                }}
+              >
+                {currentUser && (
+                  <button
+                    onClick={() => {
+                      setIsUserInfoDialogOpen(true);
+                      setIsOptionsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-3 text-left hover:bg-accent hover:text-accent-foreground min-h-[44px] first:rounded-t-lg"
+                    style={{
+                      WebkitTapHighlightColor: 'transparent',
+                      WebkitTouchCallout: 'none',
+                      touchAction: 'manipulation'
+                    }}
+                  >
+                    <UserCircle className="h-4 w-4" />
+                    <span>{currentUser.displayName || "Tài khoản"}</span>
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => {
+                    setIsSettingsDialogOpen(true);
+                    setIsOptionsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-3 text-left hover:bg-accent hover:text-accent-foreground min-h-[44px]"
+                  style={{
+                    WebkitTapHighlightColor: 'transparent',
+                    WebkitTouchCallout: 'none',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Cài đặt</span>
+                </button>
+                
+                <div className="border-t border-border my-1" />
+                
+                <button
+                  onClick={() => {
+                    handleSignOut();
+                    setIsOptionsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-3 text-left text-destructive hover:bg-destructive/20 hover:text-destructive min-h-[44px] last:rounded-b-lg"
+                  style={{
+                    WebkitTapHighlightColor: 'transparent',
+                    WebkitTouchCallout: 'none',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

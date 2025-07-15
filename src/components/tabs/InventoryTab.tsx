@@ -115,18 +115,6 @@ export function InventoryTab({
   const getBatchColor = (product: Product, allProducts: Product[]) => {
     const batchNumber = product.batchNumber || 1;
     
-    console.log('�🔥🔥 DEBUGGING BATCH LOGIC 🔥🔥🔥');
-    console.log('🔍 Current product:', {
-      id: product.id,
-      name: product.name,
-      color: product.color,
-      quality: product.quality,
-      size: product.size,
-      unit: product.unit,
-      batchNumber: product.batchNumber,
-      quantity: product.quantity
-    });
-    
     // Tìm TẤT CẢ sản phẩm cùng nhóm (bao gồm cả những lô hết hàng)
     const sameProductGroup = allProducts.filter(p => {
       const nameMatch = p.name === product.name;
@@ -146,75 +134,35 @@ export function InventoryTab({
       
       const isSameProduct = nameMatch && colorMatch && qualityMatch && sizeMatch && unitMatch;
       
-      console.log('🔍 Checking product:', {
-        id: p.id,
-        name: p.name,
-        batchNumber: p.batchNumber,
-        quantity: p.quantity,
-        matches: {
-          nameMatch,
-          colorMatch, 
-          qualityMatch: `${normalizeQuality(p.quality)} === ${normalizeQuality(product.quality)} = ${qualityMatch}`,
-          sizeMatch: `${normalizeSize(p.size)} === ${normalizeSize(product.size)} = ${sizeMatch}`,
-          unitMatch: `${normalizeUnit(p.unit)} === ${normalizeUnit(product.unit)} = ${unitMatch}`,
-          isSameProduct
-        }
-      });
-      
       return isSameProduct;
     });
     
-    console.log('🔍 FOUND SAME PRODUCT GROUP:', sameProductGroup.length, 'products');
-    console.log('🔍 ALL PRODUCTS IN GROUP:', sameProductGroup.map(p => ({
-      id: p.id,
-      name: p.name,
-      batchNumber: p.batchNumber,
-      quantity: p.quantity
-    })));
-    
     // Lấy TẤT CẢ batch numbers từ nhóm sản phẩm này
     const allBatchNumbers = sameProductGroup.map(p => p.batchNumber || 1);
-    console.log('🔍 ALL BATCH NUMBERS:', allBatchNumbers);
     
     // Sắp xếp và loại bỏ duplicate
     const uniqueBatchNumbers = [...new Set(allBatchNumbers)].sort((a, b) => a - b);
-    console.log('🔍 UNIQUE BATCH NUMBERS (SORTED):', uniqueBatchNumbers);
     
     const totalBatches = uniqueBatchNumbers.length;
     const minBatch = Math.min(...uniqueBatchNumbers);
     const maxBatch = Math.max(...uniqueBatchNumbers);
-    
-    console.log('🔍 CALCULATION RESULT:', {
-      totalBatches,
-      minBatch,
-      maxBatch,
-      currentBatch: batchNumber
-    });
     
     // Logic XÁC ĐỊNH NHÃN
     let ageLabel = '';
     
     if (totalBatches === 1) {
       ageLabel = '';
-      console.log('🔍 ONLY 1 BATCH - NO LABEL');
     } else {
       if (batchNumber === minBatch) {
         ageLabel = 'Cũ nhất';
-        console.log('🔍 THIS IS OLDEST BATCH:', batchNumber, '(min =', minBatch, ')');
       } else if (batchNumber === maxBatch) {
         ageLabel = 'Mới nhất';
-        console.log('🔍 THIS IS NEWEST BATCH:', batchNumber, '(max =', maxBatch, ')');
       } else {
         ageLabel = '';
-        console.log('🔍 THIS IS MIDDLE BATCH:', batchNumber, '(between', minBatch, 'and', maxBatch, ')');
       }
     }
     
     const finalLabel = ageLabel ? `Lô ${batchNumber} (${ageLabel})` : `Lô ${batchNumber}`;
-    
-    console.log('🔥 FINAL LABEL FOR BATCH', batchNumber, ':', finalLabel);
-    console.log('🔥🔥🔥 END DEBUG 🔥🔥🔥');
-    console.log('');
     
     // ...existing code for color palette...
     const colorPalette = [

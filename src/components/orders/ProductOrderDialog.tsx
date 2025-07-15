@@ -106,19 +106,85 @@ export function ProductOrderDialog({ isOpen, onClose, productGroup, onAddToCart 
   }, [productGroup, variantSelection]);
 
   const handleVariantChange = (field: keyof VariantSelection, value: string) => {
+    if (!productGroup) return;
+    
     setVariantSelection(prev => {
       const newState = { ...prev, [field]: value };
-      // When a higher-level field changes, reset the lower-level ones.
+      
+      // LOGIC MỚI: Không reset tự động, chỉ reset khi thực sự cần thiết
       if (field === 'color') {
-        newState.quality = '';
-        newState.size = '';
-        newState.unit = '';
+        // Khi thay đổi màu, kiểm tra xem các thuộc tính khác có còn valid không
+        const variantsWithNewColor = productGroup.filter(p => p.color === value && p.quantity > 0);
+        
+        // Kiểm tra chất lượng hiện tại có còn valid không
+        if (prev.quality) {
+          const hasValidQuality = variantsWithNewColor.some(p => p.quality === prev.quality);
+          if (!hasValidQuality) {
+            newState.quality = ''; // Chỉ reset khi không còn valid
+          }
+        }
+        
+        // Kiểm tra kích thước hiện tại có còn valid không
+        if (prev.size) {
+          const filteredByColorQuality = variantsWithNewColor.filter(p => 
+            !newState.quality || p.quality === newState.quality
+          );
+          const hasValidSize = filteredByColorQuality.some(p => p.size === prev.size);
+          if (!hasValidSize) {
+            newState.size = ''; // Chỉ reset khi không còn valid
+          }
+        }
+        
+        // Kiểm tra đơn vị hiện tại có còn valid không
+        if (prev.unit) {
+          const filteredByColorQualitySize = variantsWithNewColor.filter(p => 
+            (!newState.quality || p.quality === newState.quality) &&
+            (!newState.size || p.size === newState.size)
+          );
+          const hasValidUnit = filteredByColorQualitySize.some(p => p.unit === prev.unit);
+          if (!hasValidUnit) {
+            newState.unit = ''; // Chỉ reset khi không còn valid
+          }
+        }
       } else if (field === 'quality') {
-        newState.size = '';
-        newState.unit = '';
+        // Tương tự cho chất lượng
+        const variantsWithColorQuality = productGroup.filter(p => 
+          p.color === prev.color && p.quality === value && p.quantity > 0
+        );
+        
+        if (prev.size) {
+          const hasValidSize = variantsWithColorQuality.some(p => p.size === prev.size);
+          if (!hasValidSize) {
+            newState.size = '';
+          }
+        }
+        
+        if (prev.unit) {
+          const filteredBySizeAsWell = variantsWithColorQuality.filter(p => 
+            !newState.size || p.size === newState.size
+          );
+          const hasValidUnit = filteredBySizeAsWell.some(p => p.unit === prev.unit);
+          if (!hasValidUnit) {
+            newState.unit = '';
+          }
+        }
       } else if (field === 'size') {
-        newState.unit = '';
+        // Tương tự cho kích thước
+        const variantsWithColorQualitySize = productGroup.filter(p => 
+          p.color === prev.color && 
+          (!prev.quality || p.quality === prev.quality) && 
+          p.size === value && 
+          p.quantity > 0
+        );
+        
+        if (prev.unit) {
+          const hasValidUnit = variantsWithColorQualitySize.some(p => p.unit === prev.unit);
+          if (!hasValidUnit) {
+            newState.unit = '';
+          }
+        }
       }
+      
       return newState;
     });
   };

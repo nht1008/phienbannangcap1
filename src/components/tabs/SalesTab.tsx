@@ -444,13 +444,83 @@ export const SalesTab = React.forwardRef<SalesTabHandles, SalesTabProps>(({
   const handleVariantSelectionChange = (field: keyof VariantSelection, value: string) => {
     setVariantSelection(prev => {
       const newState = { ...prev, [field]: value };
+      
+      // LOGIC MỚI: Không reset tự động, chỉ reset khi thực sự cần thiết
+      // Tìm variants có sẵn với thuộc tính mới được chọn
+      const allVariants = inventory.filter(p => p.name === selectedProductNameForVariants && p.quantity > 0);
+      
       if (field === 'color') {
-        newState.quality = ''; newState.size = ''; newState.unit = '';
+        // Khi thay đổi màu, kiểm tra xem các thuộc tính khác có còn valid không
+        const variantsWithNewColor = allVariants.filter(p => p.color === value);
+        
+        // Kiểm tra chất lượng hiện tại có còn valid không
+        if (prev.quality && productQualityOptions.length > 0) {
+          const hasValidQuality = variantsWithNewColor.some(p => p.quality === prev.quality);
+          if (!hasValidQuality) {
+            newState.quality = ''; // Chỉ reset khi không còn valid
+          }
+        }
+        
+        // Kiểm tra kích thước hiện tại có còn valid không
+        if (prev.size && sizeOptions.length > 0) {
+          const filteredByColorQuality = variantsWithNewColor.filter(p => 
+            !newState.quality || p.quality === newState.quality
+          );
+          const hasValidSize = filteredByColorQuality.some(p => p.size === prev.size);
+          if (!hasValidSize) {
+            newState.size = ''; // Chỉ reset khi không còn valid
+          }
+        }
+        
+        // Kiểm tra đơn vị hiện tại có còn valid không
+        if (prev.unit && unitOptions.length > 0) {
+          const filteredByColorQualitySize = variantsWithNewColor.filter(p => 
+            (!newState.quality || p.quality === newState.quality) &&
+            (!newState.size || p.size === newState.size)
+          );
+          const hasValidUnit = filteredByColorQualitySize.some(p => p.unit === prev.unit);
+          if (!hasValidUnit) {
+            newState.unit = ''; // Chỉ reset khi không còn valid
+          }
+        }
       } else if (field === 'quality') {
-        newState.size = ''; newState.unit = '';
+        // Tương tự cho chất lượng
+        const variantsWithColorQuality = allVariants.filter(p => 
+          p.color === prev.color && p.quality === value
+        );
+        
+        if (prev.size && sizeOptions.length > 0) {
+          const hasValidSize = variantsWithColorQuality.some(p => p.size === prev.size);
+          if (!hasValidSize) {
+            newState.size = '';
+          }
+        }
+        
+        if (prev.unit && unitOptions.length > 0) {
+          const filteredBySizeAsWell = variantsWithColorQuality.filter(p => 
+            !newState.size || p.size === newState.size
+          );
+          const hasValidUnit = filteredBySizeAsWell.some(p => p.unit === prev.unit);
+          if (!hasValidUnit) {
+            newState.unit = '';
+          }
+        }
       } else if (field === 'size') {
-        newState.unit = '';
+        // Tương tự cho kích thước
+        const variantsWithColorQualitySize = allVariants.filter(p => 
+          p.color === prev.color && 
+          (!prev.quality || p.quality === prev.quality) && 
+          p.size === value
+        );
+        
+        if (prev.unit && unitOptions.length > 0) {
+          const hasValidUnit = variantsWithColorQualitySize.some(p => p.unit === prev.unit);
+          if (!hasValidUnit) {
+            newState.unit = '';
+          }
+        }
       }
+      
       return newState;
     });
   };

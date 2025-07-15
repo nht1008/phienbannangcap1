@@ -199,8 +199,9 @@ const Sidebar = React.forwardRef<
             data-sidebar="sidebar"
             data-mobile="true"
             className={cn(
-              "w-[--sidebar-width] bg-sidebar text-sidebar-foreground [&>button]:hidden",
-              "flex flex-col p-0" // Ensure flex column and remove default padding
+              "w-[--sidebar-width] bg-sidebar text-sidebar-foreground",
+              "flex flex-col p-0",
+              "[&>button[data-sheet-close]]:hidden" // Only hide the close button, not menu buttons
             )}
             style={
               {
@@ -211,9 +212,13 @@ const Sidebar = React.forwardRef<
           >
             <SheetHeader className="p-4 border-b border-sidebar-border">
               <SheetTitle>Menu Điều Hướng</SheetTitle>
-              {/* <SheetDescription>Các mục điều hướng chính của ứng dụng.</SheetDescription> */}
+              <SheetDescription>Các mục điều hướng chính của ứng dụng.</SheetDescription>
             </SheetHeader>
-            <div className="flex-1 flex flex-col overflow-y-auto">{children}</div>
+            <div className="flex-1 flex flex-col overflow-y-auto touch-pan-y">
+              <div className="p-2 space-y-1">
+                {children}
+              </div>
+            </div>
           </SheetContent>
         </Sheet>
       )
@@ -519,7 +524,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 touch-manipulation",
   {
     variants: {
       variant: {
@@ -529,9 +534,9 @@ const sidebarMenuButtonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground", // Added ghost variant
       },
       size: {
-        default: "h-8 text-sm",
-        sm: "h-7 text-xs",
-        lg: "h-12 text-sm group-data-[collapsible=icon]:!p-0",
+        default: "h-8 text-sm md:h-8 h-12", // Taller on mobile for better touch
+        sm: "h-7 text-xs md:h-7 h-10",
+        lg: "h-12 text-sm group-data-[collapsible=icon]:!p-0 md:h-12 h-14", // Even taller on mobile
       },
     },
     defaultVariants: {
@@ -570,7 +575,16 @@ const SidebarMenuButton = React.forwardRef<
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        className={cn(
+          sidebarMenuButtonVariants({ variant, size }), 
+          isMobile && "min-h-[44px] touch-manipulation select-none", // Ensure minimum touch target on mobile
+          className
+        )}
+        style={isMobile ? { 
+          WebkitTapHighlightColor: 'transparent',
+          WebkitTouchCallout: 'none',
+          WebkitUserSelect: 'none'
+        } : undefined}
         {...props}
       />
     )

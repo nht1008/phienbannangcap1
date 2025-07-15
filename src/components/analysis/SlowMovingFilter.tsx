@@ -22,6 +22,8 @@ interface SlowMovingFilterProps {
   onApplySalesLessThanFilterChange: (checked: boolean) => void;
   salesLessThanUnits: number;
   onSalesLessThanUnitsChange: (value: number) => void;
+  applyDisposedFilter: boolean;
+  onApplyDisposedFilterChange: (checked: boolean) => void;
 }
 
 export const SlowMovingFilter = ({
@@ -33,6 +35,8 @@ export const SlowMovingFilter = ({
   onApplySalesLessThanFilterChange,
   salesLessThanUnits,
   onSalesLessThanUnitsChange,
+  applyDisposedFilter,
+  onApplyDisposedFilterChange,
 }: SlowMovingFilterProps) => {
   return (
     <Card>
@@ -99,6 +103,10 @@ export const SlowMovingFilter = ({
                   disabled={!applySalesLessThanFilter}
                 />
                 <Label htmlFor="applySalesLessThanFilter" className="text-sm font-medium">đơn vị</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input type="checkbox" id="applyDisposedFilter" checked={applyDisposedFilter} onChange={(e) => onApplyDisposedFilterChange(e.target.checked)} className="form-checkbox h-4 w-4 text-primary rounded focus:ring-primary border-gray-300"/>
+                <Label htmlFor="applyDisposedFilter" className="text-sm font-medium">Sản phẩm đã loại bỏ</Label>
               </div>
             </div>
           </div>

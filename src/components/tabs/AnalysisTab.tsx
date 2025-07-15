@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
-import type { Invoice, Product } from '@/types';
+import type { Invoice, Product, DisposalLogEntry } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, startOfMonth, endOfMonth, subDays, eachDayOfInterval, parseISO, eachMonthOfInterval, getMonth, getYear, startOfDay, endOfDay } from 'date-fns';
@@ -26,13 +26,14 @@ import { TopSellingFilter } from '../analysis/TopSellingFilter';
 interface AnalysisTabProps {
   invoices: Invoice[];
   inventory: Product[];
+  disposalLogEntries: DisposalLogEntry[];
   customerInsights: CustomerInsight;
   filter: ActivityDateTimeFilter;
   onFilterChange: (newFilter: ActivityDateTimeFilter) => void;
   isLoading: boolean;
 }
 
-export default function AnalysisTab({ invoices, inventory, customerInsights, filter, onFilterChange, isLoading }: AnalysisTabProps) {
+export default function AnalysisTab({ invoices, inventory, disposalLogEntries, customerInsights, filter, onFilterChange, isLoading }: AnalysisTabProps) {
   const [viewMode, setViewMode] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [activeTab, setActiveTab] = useState('revenue');
   const [slowMovingDateRange, setSlowMovingDateRange] = useState<DateRange | undefined>({
@@ -47,6 +48,7 @@ export default function AnalysisTab({ invoices, inventory, customerInsights, fil
   const [applyNoSalesFilter, setApplyNoSalesFilter] = useState<boolean>(true);
   const [applySalesLessThanFilter, setApplySalesLessThanFilter] = useState<boolean>(false);
   const [salesLessThanUnits, setSalesLessThanUnits] = useState<number>(5);
+  const [applyDisposedFilter, setApplyDisposedFilter] = useState<boolean>(true);
   
   const handleDateChange = (dateRange: DateRange | undefined) => {
     if (dateRange) {
@@ -243,49 +245,83 @@ export default function AnalysisTab({ invoices, inventory, customerInsights, fil
       }
     });
 
+    // Tạo map của sản phẩm đã loại bỏ trong khoảng thời gian
+    const disposedProductsInRange: Record<string, { quantityDisposed: number; lastDisposalDate?: string; disposalReasons: string[] }> = {};
+
+    disposalLogEntries.forEach(disposal => {
+      const disposalDate = parseISO(disposal.disposalDate);
+      if (disposalDate >= startDate && disposalDate <= endDate) {
+        const key = `${disposal.productId}-${disposal.color}-${disposal.size}`;
+        
+        if (!disposedProductsInRange[key]) {
+          disposedProductsInRange[key] = { quantityDisposed: 0, lastDisposalDate: undefined, disposalReasons: [] };
+        }
+
+        disposedProductsInRange[key].quantityDisposed += disposal.quantityDisposed;
+        if (!disposedProductsInRange[key].lastDisposalDate || disposalDate > parseISO(disposedProductsInRange[key].lastDisposalDate!)) {
+          disposedProductsInRange[key].lastDisposalDate = disposal.disposalDate;
+        }
+        
+        // Thêm lý do loại bỏ nếu chưa có
+        if (!disposedProductsInRange[key].disposalReasons.includes(disposal.reason)) {
+          disposedProductsInRange[key].disposalReasons.push(disposal.reason);
+        }
+      }
+    });
+
     const allProductsAsPerformance = inventory.map(p => {
         const key = `${p.id}-${p.color}-${p.size}`;
+        const disposalInfo = disposedProductsInRange[key];
+        const salesInfo = salesInDateRange[key];
+        
         return {
             key,
+            id: p.id,
             name: p.name,
-            soldInPeriod: 0,
-            revenueInPeriod: 0,
-            profitInPeriod: 0,
+            soldInPeriod: salesInfo?.sold || 0,
+            revenueInPeriod: salesInfo?.revenue || 0,
+            profitInPeriod: salesInfo?.profit || 0,
             color: p.color,
             size: p.size,
             quality: p.quality,
             unit: p.unit,
             currentStock: p.quantity,
-        }
+            images: p.images || [],
+            // Thông tin về sản phẩm đã loại bỏ
+            quantityDisposed: disposalInfo?.quantityDisposed || 0,
+            lastDisposalDate: disposalInfo?.lastDisposalDate,
+            disposalReasons: disposalInfo?.disposalReasons || [],
+        };
     });
 
-    const combinedPerformance: Record<string, any> = {};
-
-    allProductsAsPerformance.forEach(p => {
-        combinedPerformance[p.key] = p;
-    });
-
-    Object.keys(salesInDateRange).forEach(key => {
-        if (combinedPerformance[key]) {
-            combinedPerformance[key].soldInPeriod = salesInDateRange[key].sold;
-            combinedPerformance[key].revenueInPeriod = salesInDateRange[key].revenue;
-            combinedPerformance[key].profitInPeriod = salesInDateRange[key].profit;
-        }
-    });
-
-    return Object.values(combinedPerformance)
-      .filter(product => {
+    const filteredProducts = allProductsAsPerformance.filter(product => {
         let isSlowMoving = false;
+        
+        // Sản phẩm có disposal (chỉ khi bật filter disposal)
+        if (applyDisposedFilter && product.quantityDisposed > 0) {
+          isSlowMoving = true;
+        }
+        
+        // Áp dụng filter không có bán hàng
         if (applyNoSalesFilter && product.soldInPeriod === 0) {
           isSlowMoving = true;
         }
+        
+        // Áp dụng filter bán ít hơn threshold
         if (applySalesLessThanFilter && product.soldInPeriod > 0 && product.soldInPeriod < salesLessThanUnits) {
           isSlowMoving = true;
         }
+        
         return isSlowMoving;
-      })
-      .sort((a, b) => a.soldInPeriod - b.soldInPeriod);
-  }, [invoices, inventory, slowMovingDateRange, applyNoSalesFilter, applySalesLessThanFilter, salesLessThanUnits]);
+    });
+
+    return filteredProducts.sort((a, b) => {
+        // Sắp xếp theo: sản phẩm có loại bỏ trước, sau đó theo số lượng bán
+        if (a.quantityDisposed > 0 && b.quantityDisposed === 0) return -1;
+        if (a.quantityDisposed === 0 && b.quantityDisposed > 0) return 1;
+        return a.soldInPeriod - b.soldInPeriod;
+    });
+  }, [invoices, inventory, disposalLogEntries, slowMovingDateRange, applyNoSalesFilter, applySalesLessThanFilter, salesLessThanUnits, applyDisposedFilter]);
 
   const lowStockProducts = useMemo(() => {
     return inventory.filter(p => p.quantity <= (p.lowStockThreshold || 10));
@@ -439,6 +475,8 @@ export default function AnalysisTab({ invoices, inventory, customerInsights, fil
                     onApplySalesLessThanFilterChange={setApplySalesLessThanFilter}
                     salesLessThanUnits={salesLessThanUnits}
                     onSalesLessThanUnitsChange={setSalesLessThanUnits}
+                    applyDisposedFilter={applyDisposedFilter}
+                    onApplyDisposedFilterChange={setApplyDisposedFilter}
                   />
                 </div>
               </div>
