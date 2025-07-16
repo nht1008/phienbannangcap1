@@ -347,7 +347,7 @@ export function EmployeeTab({
   const handleSelectEmployee = (employee: Employee) => {
     if (can_manage || employee.email === adminEmail || employee.id === currentUser?.uid) {
         setSelectedEmployee(employee);
-        setDateRangePreset('all_time');
+        setDateRangePreset('today'); // Mặc định hiển thị thông tin hôm nay
     } else {
         setSelectedEmployee(null);
     }
@@ -727,8 +727,7 @@ export function EmployeeTab({
                         <TableHead className="w-12">STT</TableHead>
                         <TableHead>ID HĐ</TableHead>
                         <TableHead>Khách hàng</TableHead>
-                        <TableHead>Ngày</TableHead>
-                        <TableHead>Giờ</TableHead>
+                        <TableHead>Thời gian</TableHead>
                         <TableHead className="text-right">Tổng tiền</TableHead>
                         <TableHead className="text-right">Giảm giá</TableHead>
                       </TableRow>
@@ -741,10 +740,22 @@ export function EmployeeTab({
                             <TableCell>{index + 1}</TableCell>
                             <TableCell>{invoice.id.substring(0, 8)}...</TableCell>
                             <TableCell>{invoice.customerName}</TableCell>
-                            <TableCell>{invoiceDate.toLocaleDateString('vi-VN')}</TableCell>
-                            <TableCell>{invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</TableCell>
-                            <TableCell className="text-right">{(invoice.total || 0).toLocaleString('vi-VN')} VNĐ</TableCell>
-                            <TableCell className="text-right">{(invoice.discount ?? 0).toLocaleString('vi-VN')} VNĐ</TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <div>{invoiceDate.toLocaleDateString('vi-VN')}</div>
+                                <div className="text-muted-foreground">{invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className="bg-green-600 text-white px-2 py-1 rounded">
+                                {(invoice.total || 0).toLocaleString('vi-VN')} VNĐ
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className="bg-red-600 text-white px-2 py-1 rounded">
+                                {(invoice.discount ?? 0).toLocaleString('vi-VN')} VNĐ
+                              </span>
+                            </TableCell>
                           </TableRow>
                         );
                       })}
@@ -766,8 +777,7 @@ export function EmployeeTab({
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-12">STT</TableHead>
-                        <TableHead>Ngày</TableHead>
-                        <TableHead>Giờ</TableHead>
+                        <TableHead>Thời gian</TableHead>
                         <TableHead className="w-40">Hành động</TableHead>
                         <TableHead>Khách hàng</TableHead>
                         <TableHead className="text-right w-48">Số tiền</TableHead>
@@ -779,8 +789,12 @@ export function EmployeeTab({
                         return (
                           <TableRow key={activity.key}>
                             <TableCell>{index + 1}</TableCell>
-                            <TableCell>{activityDate.toLocaleDateString('vi-VN')}</TableCell>
-                            <TableCell>{activityDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <div>{activityDate.toLocaleDateString('vi-VN')}</div>
+                                <div className="text-muted-foreground">{activityDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <span className={cn(
                                 "px-2 py-1 rounded-full text-xs font-semibold",
@@ -790,11 +804,10 @@ export function EmployeeTab({
                               </span>
                             </TableCell>
                             <TableCell>{activity.customerName}</TableCell>
-                            <TableCell className={cn(
-                              "text-right font-semibold",
-                               activity.type === 'Tạo nợ' ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
-                            )}>
-                              {(activity.amount || 0).toLocaleString('vi-VN')} VNĐ
+                            <TableCell className="text-right">
+                              <span className="bg-red-600 text-white px-2 py-1 rounded font-semibold">
+                                {(activity.amount || 0).toLocaleString('vi-VN')} VNĐ
+                              </span>
                             </TableCell>
                           </TableRow>
                         );

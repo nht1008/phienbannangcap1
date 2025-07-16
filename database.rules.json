@@ -46,7 +46,14 @@
       ".read": "auth != null",
       ".write": "root.child('employees').child(auth.uid).exists()",
       "$userId": {
-        ".read": "auth != null && auth.uid == $userId"
+        ".read": "auth != null && auth.uid == $userId",
+        ".write": "auth != null && auth.uid == $userId",
+        "points": {
+          ".write": "auth != null && (auth.uid == $userId || root.child('employees').child(auth.uid).exists())"
+        },
+        "pointsHistory": {
+          ".write": "auth != null && (auth.uid == $userId || root.child('employees').child(auth.uid).exists())"
+        }
       }
     },
     "debts": {
@@ -55,7 +62,8 @@
     },
     "debtHistory": {
       ".read": "root.child('employees').child(auth.uid).exists()",
-      ".write": "root.child('employees').child(auth.uid).exists()"
+      ".write": "root.child('employees').child(auth.uid).exists()",
+      ".indexOn": ["customerId"]
     },
     "disposalLog": {
       ".read": "root.child('employees').child(auth.uid).exists()",

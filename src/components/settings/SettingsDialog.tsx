@@ -149,9 +149,8 @@ export function SettingsDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Cài đặt hiển thị & Thông tin</DialogTitle>
+          <DialogTitle className="text-2xl">Cài đặt</DialogTitle>
           <DialogDescription>
-            Tùy chỉnh giao diện và cập nhật thông tin cửa hàng (nếu bạn là Quản trị viên hoặc Quản lý).
           </DialogDescription>
         </DialogHeader>
 

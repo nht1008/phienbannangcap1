@@ -110,6 +110,10 @@ export interface Order {
   completionDate?: string; // ISO string
   updatedBy?: string; // UID of employee who last updated
   updatedAt?: string; // ISO string of last update
+  redeemedPoints?: { // Thông tin điểm đã đổi (để xử lý sau khi hoàn thành)
+    points: number;
+    value: number;
+  };
 }
 
 

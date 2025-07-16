@@ -11,6 +11,7 @@ import { ListChecks } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { normalizeStringForSearch } from '@/lib/utils';
+import { useToast } from "@/hooks/use-toast";
 
 interface OrderHistoryTabProps {
   invoices: Invoice[];
@@ -19,6 +20,7 @@ interface OrderHistoryTabProps {
 
 export function OrderHistoryTab({ invoices, currentUser }: OrderHistoryTabProps) {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const { toast } = useToast();
 
   const userInvoices = useMemo(() => {
     if (!currentUser) return [];
@@ -56,9 +58,54 @@ export function OrderHistoryTab({ invoices, currentUser }: OrderHistoryTabProps)
                       {userInvoices.map((invoice, index) => (
                         <TableRow key={invoice.id}>
                           <TableCell>{index + 1}</TableCell>
-                          <TableCell>{invoice.id.substring(0, 8)}...</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="text-blue-500 cursor-pointer hover:underline"
+                                onClick={() => {
+                                  if (typeof window !== 'undefined' && navigator.clipboard) {
+                                    navigator.clipboard.writeText(invoice.id);
+                                  }
+                                }}
+                              >
+                                {invoice.id}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  if (typeof window !== 'undefined' && navigator.clipboard) {
+                                    navigator.clipboard.writeText(invoice.id);
+                                  }
+                                }}
+                                className="p-0"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth="1.5"
+                                  stroke="currentColor"
+                                  className="w-4 h-4 text-blue-500 hover:text-blue-700"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M8.25 15.75v1.5a2.25 2.25 0 002.25 2.25h6a2.25 2.25 0 002.25-2.25v-6a2.25 2.25 0 00-2.25-2.25h-1.5"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M15.75 8.25v-1.5a2.25 2.25 0 00-2.25-2.25h-6a2.25 2.25 0 00-2.25 2.25v6a2.25 2.25 0 002.25 2.25h1.5"
+                                  />
+                                </svg>
+                              </Button>
+                            </div>
+                          </TableCell>
                           <TableCell>{new Date(invoice.date).toLocaleDateString('vi-VN')}</TableCell>
-                          <TableCell className="text-right font-semibold">{invoice.total.toLocaleString('vi-VN')} VNĐ</TableCell>
+                          <TableCell className="text-right font-semibold">
+                            <span className="bg-green-500 text-white rounded px-2 py-1 text-sm">{invoice.total.toLocaleString('vi-VN')} VNĐ</span>
+                          </TableCell>
                           <TableCell className="text-center">
                             <Button variant="ghost" size="icon" onClick={() => setSelectedInvoice(invoice)}>
                               <ListChecks className="h-5 w-5 text-primary" />
@@ -81,7 +128,18 @@ export function OrderHistoryTab({ invoices, currentUser }: OrderHistoryTabProps)
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">#{index + 1}</span>
-                              <span className="text-sm font-medium text-muted-foreground">ID: {invoice.id.substring(0, 8)}...</span>
+                              <span 
+                                className="text-sm font-medium text-blue-600 cursor-pointer hover:text-blue-800 break-all"
+                                onClick={() => {
+                                  if (typeof window !== 'undefined' && navigator.clipboard) {
+                                    navigator.clipboard.writeText(invoice.id);
+                                    toast({ title: 'Đã sao chép', description: `ID hóa đơn ${invoice.id} đã được sao chép vào bộ nhớ tạm.` });
+                                  }
+                                }}
+                                title="Nhấn để sao chép ID hóa đơn"
+                              >
+                                ID: {invoice.id}
+                              </span>
                             </div>
                             <p className="text-sm text-muted-foreground">{new Date(invoice.date).toLocaleDateString('vi-VN')}</p>
                           </div>
@@ -90,7 +148,7 @@ export function OrderHistoryTab({ invoices, currentUser }: OrderHistoryTabProps)
                           </Button>
                         </div>
                         <div className="text-right">
-                          <span className="text-lg font-bold text-primary">{invoice.total.toLocaleString('vi-VN')} VNĐ</span>
+                          <span className="bg-green-500 text-white rounded px-2 py-1 text-sm font-bold">{invoice.total.toLocaleString('vi-VN')} VNĐ</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -106,7 +164,18 @@ export function OrderHistoryTab({ invoices, currentUser }: OrderHistoryTabProps)
         <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
           <DialogContent className="sm:max-w-2xl max-w-[95vw] max-h-[90vh] overflow-hidden">
             <DialogHeader className="pb-2">
-              <DialogTitle className="text-lg md:text-xl">Chi tiết hóa đơn #{selectedInvoice.id.substring(0, 6)}...</DialogTitle>
+              <DialogTitle 
+                className="text-lg md:text-xl cursor-pointer text-blue-600 hover:text-blue-800"
+                onClick={() => {
+                  if (typeof window !== 'undefined' && navigator.clipboard) {
+                    navigator.clipboard.writeText(selectedInvoice.id);
+                    toast({ title: 'Đã sao chép', description: `ID hóa đơn ${selectedInvoice.id} đã được sao chép vào bộ nhớ tạm.` });
+                  }
+                }}
+                title="Nhấn để sao chép ID hóa đơn"
+              >
+                Chi tiết hóa đơn #{selectedInvoice.id}
+              </DialogTitle>
               <DialogDescription className="text-sm">
                 Ngày: {new Date(selectedInvoice.date).toLocaleString('vi-VN')}
               </DialogDescription>
@@ -120,9 +189,7 @@ export function OrderHistoryTab({ invoices, currentUser }: OrderHistoryTabProps)
                   <TableHeader>
                     <TableRow>
                       <TableHead>Sản phẩm</TableHead>
-                      <TableHead>Màu</TableHead>
-                      <TableHead>Chất lượng</TableHead>
-                      <TableHead>K.Thước</TableHead>
+                      <TableHead>Thuộc tính</TableHead>
                       <TableHead>ĐV</TableHead>
                       <TableHead className="text-right">SL</TableHead>
                       <TableHead className="text-right">Đơn giá</TableHead>
@@ -130,20 +197,23 @@ export function OrderHistoryTab({ invoices, currentUser }: OrderHistoryTabProps)
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedInvoice.items.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.color}</TableCell>
-                        <TableCell>{item.quality}</TableCell>
-                        <TableCell>{item.size}</TableCell>
-                        <TableCell>{item.unit}</TableCell>
-                        <TableCell className="text-right">{item.quantityInCart}</TableCell>
-                        <TableCell className="text-right">{item.price.toLocaleString('vi-VN')}</TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {(item.price * item.quantityInCart).toLocaleString('vi-VN')}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {selectedInvoice.items.map((item, index) => {
+                      const attributes = [item.color, item.quality, item.size].filter(attr => attr && attr.trim() !== '');
+                      const attributeText = attributes.length > 1 ? attributes.join(' - ') : attributes[0] || '';
+                      
+                      return (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>{attributeText}</TableCell>
+                          <TableCell>{item.unit}</TableCell>
+                          <TableCell className="text-right">{item.quantityInCart}</TableCell>
+                          <TableCell className="text-right">{item.price.toLocaleString('vi-VN')}</TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {(item.price * item.quantityInCart).toLocaleString('vi-VN')}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </ScrollArea>
@@ -180,8 +250,8 @@ export function OrderHistoryTab({ invoices, currentUser }: OrderHistoryTabProps)
             </div>
             
             <Separator />
-            <div className="flex justify-end font-bold text-base md:text-lg text-primary">
-              <span>Tổng cộng: {selectedInvoice.total.toLocaleString('vi-VN')} VNĐ</span>
+            <div className="flex justify-end font-bold text-base md:text-lg">
+              <span className="bg-green-500 text-white rounded px-3 py-1">Tổng cộng: {selectedInvoice.total.toLocaleString('vi-VN')} VNĐ</span>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setSelectedInvoice(null)} className="w-full sm:w-auto">Đóng</Button>

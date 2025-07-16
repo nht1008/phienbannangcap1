@@ -22,17 +22,29 @@ interface DebtTabProps {
   onOpenPaymentDialog: (debt: Debt) => void;
   openCustomerDebtHistoryDialog: (customerId: string, customerName: string) => void;
   currentUser: User | null;
+  isCurrentUserCustomer: boolean;
 }
 
 export function DebtTab({
   debts,
   onOpenPaymentDialog,
   openCustomerDebtHistoryDialog,
-  currentUser
+  currentUser,
+  isCurrentUserCustomer
 }: DebtTabProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
-  // Use smart search hook
+  // Filter debts based on user type
+  const availableDebts = useMemo(() => {
+    if (isCurrentUserCustomer && currentUser) {
+      // For customers, only show their own debts
+      return debts.filter(debt => debt.customerId === currentUser.uid);
+    }
+    // For staff/managers, show all debts
+    return debts;
+  }, [debts, isCurrentUserCustomer, currentUser]);
+  
+  // Use smart search hook with filtered debts
   const {
     searchQuery,
     setSearchQuery,
@@ -40,7 +52,7 @@ export function DebtTab({
     filteredResults,
     isSearching,
     totalResults
-  } = useDebtSearch(debts);
+  } = useDebtSearch(availableDebts);
 
   // Apply status filter to search results
   const filteredDebts = useMemo(() => {
@@ -58,12 +70,12 @@ export function DebtTab({
     [filteredDebts]
   );
 
-  // Generate suggestions based on existing data
+  // Generate suggestions based on available data
   const suggestions = useMemo(() => {
-    const customerNames = [...new Set(debts.map(debt => debt.customerName))];
-    const statuses = [...new Set(debts.map(debt => debt.status))];
+    const customerNames = [...new Set(availableDebts.map(debt => debt.customerName))];
+    const statuses = [...new Set(availableDebts.map(debt => debt.status))];
     return [...customerNames.slice(0, 3), ...statuses];
-  }, [debts]);
+  }, [availableDebts]);
 
   const filterContent = (
     <div className="space-y-3">
@@ -89,14 +101,14 @@ export function DebtTab({
       <CardHeader>
         <CardTitle className="text-4xl font-bold flex items-center">
           <DebtIcon className="mr-3 h-10 w-10" />
-          Công nợ & Lịch sử Khách hàng
+          {isCurrentUserCustomer ? 'Công nợ của tôi' : 'Công nợ & Lịch sử Khách hàng'}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col">
         {/* Smart Search Bar */}
         <div className="mb-4">
           <SmartSearchBar
-            placeholder="Tìm kiếm khách hàng theo tên, trạng thái, số tiền..."
+            placeholder={isCurrentUserCustomer ? "Tìm kiếm công nợ của tôi theo trạng thái, số tiền..." : "Tìm kiếm khách hàng theo tên, trạng thái, số tiền..."}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onClearSearch={clearSearch}
@@ -110,8 +122,8 @@ export function DebtTab({
 
         <div className="mb-6 p-4 bg-destructive/10 border-l-4 border-destructive rounded-md text-[hsl(var(--destructive))]">
           <p className="font-bold">
-            Tổng nợ còn lại {searchQuery || statusFilter !== 'all' ? 'đã lọc' : 'của tất cả khách hàng'}: {totalUnpaid.toLocaleString('vi-VN')} VNĐ
-            {(searchQuery || statusFilter !== 'all') && (
+            {isCurrentUserCustomer ? 'Tổng nợ còn lại của tôi' : `Tổng nợ còn lại ${searchQuery || statusFilter !== 'all' ? 'đã lọc' : 'của tất cả khách hàng'}`}: {totalUnpaid.toLocaleString('vi-VN')} VNĐ
+            {!isCurrentUserCustomer && (searchQuery || statusFilter !== 'all') && (
               <span className="text-sm font-normal ml-2">
                 ({filteredDebts.length}/{debts.length} khách hàng)
               </span>
@@ -124,12 +136,12 @@ export function DebtTab({
                 <div className="flex flex-col items-center gap-4">
                   <NoDebtIllustration />
                   <h3 className="text-xl font-semibold">
-                    {searchQuery || statusFilter !== 'all' ? 'Không tìm thấy khách hàng' : 'Không có khách hàng nào'}
+                    {searchQuery || statusFilter !== 'all' ? 'Không tìm thấy khách hàng' : (isCurrentUserCustomer ? 'Bạn không có công nợ nào' : 'Không có khách hàng nào')}
                   </h3>
                   <p className="text-muted-foreground">
                     {searchQuery || statusFilter !== 'all' 
                       ? 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc'
-                      : 'Hiện tại chưa có giao dịch công nợ nào được ghi nhận.'
+                      : (isCurrentUserCustomer ? 'Bạn chưa có giao dịch công nợ nào được ghi nhận.' : 'Hiện tại chưa có giao dịch công nợ nào được ghi nhận.')
                     }
                   </p>
                 </div>
@@ -141,7 +153,7 @@ export function DebtTab({
                 <TableRow>
                   <TableHead className="w-12">STT</TableHead>
                   <TableHead>Khách hàng</TableHead>
-                  <TableHead>Ngày nợ</TableHead>
+                  <TableHead>Thời gian</TableHead>
                   <TableHead className="text-right">Tiền nợ</TableHead>
                     <TableHead className="text-right text-green-600">Đã trả</TableHead>
                     <TableHead className="text-right text-red-600">Còn nợ</TableHead>
@@ -150,7 +162,9 @@ export function DebtTab({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDebts.map((debt, index) => (
+                {filteredDebts.map((debt, index) => {
+                  const debtDate = new Date(debt.date);
+                  return (
                   <TableRow key={debt.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>
@@ -159,8 +173,17 @@ export function DebtTab({
                         searchQuery={searchQuery}
                       />
                     </TableCell>
-                    <TableCell>{format(new Date(debt.date), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="text-right">{debt.originalAmount.toLocaleString('vi-VN')} VNĐ</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>{debtDate.toLocaleDateString('vi-VN')}</div>
+                        <div className="text-muted-foreground">{debtDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="bg-red-600 text-white px-2 py-1 rounded">
+                        {debt.originalAmount.toLocaleString('vi-VN')} VNĐ
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">
                       <span className="bg-green-600 text-white px-2 py-1 rounded">
                         {debt.amountPaid.toLocaleString('vi-VN')} VNĐ
@@ -183,7 +206,16 @@ export function DebtTab({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openCustomerDebtHistoryDialog(debt.customerId || debt.customerName, debt.customerName)}
+                        onClick={() => {
+                          // For customers, always show their own history regardless of which debt they click
+                          const customerIdToShow = isCurrentUserCustomer && currentUser 
+                            ? currentUser.uid 
+                            : (debt.customerId || debt.customerName);
+                          const customerNameToShow = isCurrentUserCustomer && currentUser
+                            ? debt.customerName // Use the customer name from the debt
+                            : debt.customerName;
+                          openCustomerDebtHistoryDialog(customerIdToShow, customerNameToShow);
+                        }}
                         title="Xem toàn bộ lịch sử công nợ của khách hàng"
                       >
                         Lịch sử
@@ -200,7 +232,8 @@ export function DebtTab({
                       </span>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </ScrollArea>

@@ -82,10 +82,11 @@ export function OrderDialog({ isOpen, onClose, product, onConfirmOrder }: OrderD
         <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 py-4">
             <div className="flex justify-center items-center row-span-2">
                  <Image
-                    src={product.image || `https://placehold.co/400x400.png`}
+                    src={product.images?.[0] || `https://placehold.co/400x400.png`}
                     alt={product.name}
                     width={400}
                     height={400}
+                    priority
                     className="rounded-lg object-cover aspect-square border shadow-lg"
                     data-ai-hint={`${product.name.split(' ')[0]} flower`}
                     onError={(e) => ((e.target as HTMLImageElement).src = 'https://placehold.co/400x400.png')}

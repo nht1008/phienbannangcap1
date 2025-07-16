@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 
 const getSeason = (): 'spring' | 'summer' | 'autumn' | 'winter' => {
   const month = new Date().getMonth();
@@ -11,9 +11,17 @@ const getSeason = (): 'spring' | 'summer' | 'autumn' | 'winter' => {
 };
 
 const SeasonalEffects: React.FC = () => {
-  const season = useMemo(() => getSeason(), []);
+  const [season, setSeason] = useState<'spring' | 'summer' | 'autumn' | 'winter'>('winter');
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setSeason(getSeason());
+  }, []);
 
   const renderParticles = (particleClass: string, count: number) => {
+    if (!isClient) return null;
+    
     return Array.from({ length: count }).map((_, i) => (
       <div key={i} className={particleClass} style={{
         left: `${Math.random() * 100}vw`,

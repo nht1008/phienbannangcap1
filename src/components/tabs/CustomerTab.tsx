@@ -620,7 +620,20 @@ export function CustomerTab({ customers, invoices, onAddCustomer, onUpdateCustom
         <Dialog open={isInvoiceDetailModalOpen} onOpenChange={closeInvoiceItemDetailsDialog}>
           <DialogContent className="sm:max-w-3xl">
             <DialogHeader>
-              <DialogTitle className="text-xl">Chi tiết sản phẩm Hóa đơn #{invoiceForDetailedView.id.substring(0,6)}...</DialogTitle>
+              <DialogTitle 
+                className="text-xl cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                onClick={() => {
+                  navigator.clipboard.writeText(invoiceForDetailedView.id);
+                  toast({
+                    title: "Đã sao chép",
+                    description: `ID hóa đơn ${invoiceForDetailedView.id} đã được sao chép`,
+                    duration: 2000,
+                  });
+                }}
+                title="Nhấn để sao chép ID hóa đơn"
+              >
+                Chi tiết sản phẩm Hóa đơn #{invoiceForDetailedView.id}
+              </DialogTitle>
               <DialogDescription asChild>
                 <div>
                   <p>Khách hàng: {invoiceForDetailedView.customerName}</p>

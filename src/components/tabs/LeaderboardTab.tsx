@@ -431,19 +431,6 @@ function RedemptionInfoDialog({ isOpen, onOpenChange }: RedemptionInfoDialogProp
     }
   };
 
-  const getMilestoneBackgroundColor = (points: number) => {
-    const colors = [
-      'bg-green-100',
-      'bg-green-200',
-      'bg-green-300',
-      'bg-green-400',
-      'bg-green-500',
-      'bg-green-600',
-    ];
-    const index = REDEMPTION_OPTIONS.findIndex(option => option.points === points);
-    return colors[index] || 'bg-gray-200';
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl">
@@ -459,40 +446,24 @@ function RedemptionInfoDialog({ isOpen, onOpenChange }: RedemptionInfoDialogProp
                   <p>Tỷ lệ quy đổi: <span className="font-mono bg-muted px-2 py-1 rounded">{1 / POINT_CONVERSION_RATE} VNĐ</span> chi tiêu = <span className="font-mono bg-muted px-2 py-1 rounded">1 điểm</span>.</p>
               </div>
               <Separator />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <h3 className="font-semibold mb-2">Hệ số nhân theo hạng</h3>
-                    <Table>
-                       <TableHeader>
-                         <TableRow>
-                           <TableHead>Hạng</TableHead>
-                           <TableHead>Hệ số nhân</TableHead>
-                         </TableRow>
-                       </TableHeader>
-                       <TableBody>
-                          {Object.entries(TIER_POINT_MULTIPLIERS).map(([tier, multiplier]) => (
-                            <TableRow key={tier} className={getVipTierStyling(tier)}>
-                              <TableCell className="font-bold">{tier}</TableCell>
-                              <TableCell>x{multiplier}</TableCell>
-                            </TableRow>
-                          ))}
-                       </TableBody>
-                     </Table>
-                </div>
-                <div>
-                    <h3 className="font-semibold mb-2">Các mốc đổi thưởng</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                        {REDEMPTION_OPTIONS.map((option) => (
-                            <div key={option.points} className={cn(
-                                "p-4 rounded-lg text-center transition-all duration-300",
-                                getMilestoneBackgroundColor(option.points)
-                            )}>
-                                <p className="text-lg font-bold text-gray-800">{option.value.toLocaleString('vi-VN')} VNĐ</p>
-                                <p className="text-sm text-gray-600">({option.points.toLocaleString('vi-VN')} điểm)</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+              <div>
+                <h3 className="font-semibold mb-2">Hệ số nhân theo hạng</h3>
+                <Table>
+                   <TableHeader>
+                     <TableRow>
+                       <TableHead>Hạng</TableHead>
+                       <TableHead>Hệ số nhân</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody>
+                      {Object.entries(TIER_POINT_MULTIPLIERS).map(([tier, multiplier]) => (
+                        <TableRow key={tier} className={getVipTierStyling(tier)}>
+                          <TableCell className="font-bold">{tier}</TableCell>
+                          <TableCell>x{multiplier}</TableCell>
+                        </TableRow>
+                      ))}
+                   </TableBody>
+                 </Table>
               </div>
           </div>
           <DialogFooter>

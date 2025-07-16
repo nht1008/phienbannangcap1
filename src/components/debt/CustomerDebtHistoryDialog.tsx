@@ -137,7 +137,7 @@ export function CustomerDebtHistoryDialog({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">Ngày</TableHead>
+                    <TableHead className="w-[120px]">Thời gian</TableHead>
                     <TableHead className="w-[120px]">Hành động</TableHead>
                     <TableHead className="w-[140px] text-right">Số tiền</TableHead>
                     <TableHead className="w-[140px] text-right">Nợ còn lại</TableHead>
@@ -147,12 +147,19 @@ export function CustomerDebtHistoryDialog({
                 </TableHeader>
                 <TableBody>
                   {debtHistory.length > 0 ? (
-                    debtHistory.map((entry) => (
+                    debtHistory.map((entry) => {
+                      const entryDate = new Date(entry.date);
+                      return (
                       <TableRow key={entry.id}>
                         <TableCell>
-                          <div className="flex items-center gap-1 text-sm">
-                            <Calendar className="w-3 h-3" />
-                            {format(new Date(entry.date), 'dd/MM/yy HH:mm', { locale: vi })}
+                          <div className="text-sm">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {entryDate.toLocaleDateString('vi-VN')}
+                            </div>
+                            <div className="text-muted-foreground text-xs ml-4">
+                              {entryDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -162,7 +169,9 @@ export function CustomerDebtHistoryDialog({
                           {getAmountDisplay(entry)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {entry.remainingDebt.toLocaleString('vi-VN')} VNĐ
+                          <span className="bg-red-600 text-white px-2 py-1 rounded">
+                            {entry.remainingDebt.toLocaleString('vi-VN')} VNĐ
+                          </span>
                         </TableCell>
                         <TableCell className="text-sm">
                           {entry.employeeName}
@@ -176,7 +185,7 @@ export function CustomerDebtHistoryDialog({
                           )}
                         </TableCell>
                       </TableRow>
-                    ))
+                    )})
                   ) : (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground py-8">

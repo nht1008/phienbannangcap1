@@ -22,10 +22,11 @@ import { EmployeeIcon } from '@/components/icons/EmployeeIcon';
 import { PointsIcon } from '@/components/icons/PointsIcon';
 import { ProductFormDialog } from '@/components/products/ProductFormDialog';
 import { PaymentDialog } from '@/components/debt/PaymentDialog';
+import { HeroBanner } from '@/components/storefront/HeroBanner';
 
 
 import type { SalesTabHandles } from '@/components/tabs/SalesTab';
-import { HeroBanner } from '@/components/storefront/HeroBanner';
+
 
 const TabLoading = () => <div className="flex items-center justify-center h-64"><p>Đang tải...</p></div>;
 
@@ -50,6 +51,7 @@ import { ProductDialogs } from '@/components/products/ProductDialogs';
 import { DebtDialogs } from '@/components/debt/DebtDialogs';
 import { CustomerDebtHistoryDialog } from '@/components/debt/CustomerDebtHistoryDialog';
 import { CustomerCartSheet } from '@/components/orders/CustomerCartSheet';
+import { CustomerAccountHeaderButton } from '@/components/customer/CustomerAccountHeaderButton';
 import { EmployeeCartSheet } from '@/components/orders/EmployeeCartSheet';
 // import { ProductOrderDialog } from '../../../../src/components/orders/ProductOrderDialog';
 import { cn, normalizeStringForSearch } from '@/lib/utils';
@@ -100,7 +102,7 @@ import {
   SidebarInset,
   useSidebar
 } from '@/components/ui/sidebar';
-import { PanelLeft, ChevronsLeft, ChevronsRight, LogOut, UserCircle, Settings, ShoppingCart, Store, Pencil, Trash2, PlusCircle, MoreHorizontal } from 'lucide-react';
+import { AlignJustify, Menu, LogOut, UserCircle, Settings, ShoppingCart, Store, Pencil, Trash2, PlusCircle, MoreHorizontal } from 'lucide-react';
 import { TopSpenderMarquee } from '@/components/shared/TopSpenderMarquee';
 import { db, auth } from '@/lib/firebase';
 import { ref, onValue, set, push, update, get, child, remove, query, orderByChild, equalTo } from "firebase/database";
@@ -340,6 +342,8 @@ interface FleurManagerLayoutContentProps {
   isCartAnimating: boolean;
   salesTabRef: React.RefObject<SalesTabHandles>;
   handleSaveProductDescription: (productId: string, description: string) => Promise<void>;
+  isProductDialogOpen: boolean;
+  handleProductDialogStateChange: (isOpen: boolean) => void;
 }
 
 const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentProps) => {
@@ -363,10 +367,12 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
     onConfirmCancel,
     isCartAnimating,
     salesTabRef,
-    handleSaveProductDescription
+    handleSaveProductDescription,
+    isProductDialogOpen,
+    handleProductDialogStateChange
   } = props;
 
-  const { open: sidebarStateOpen, toggleSidebar, isMobile } = useSidebar();
+  const { isMobile } = useSidebar();
 
   const pendingOrdersCount = useMemo(() => {
     if (isCurrentUserCustomer) return 0; // Customers don't need to see this badge.
@@ -394,7 +400,8 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
         item.name === 'Gian hàng' ||
         item.name === 'Đơn hàng' ||
         item.name === 'Lịch sử đặt hàng' ||
-        item.name === 'Bảng xếp hạng'
+        item.name === 'Bảng xếp hạng' ||
+        item.name === 'Công nợ'
       );
     }
 
@@ -445,6 +452,7 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
                    productQualityOptions={productQualityOptions}
                    sizeOptions={sizeOptions}
                    unitOptions={unitOptions}
+                   onDialogStateChange={handleProductDialogStateChange}
                  />,
     'Kho hàng': <WarehouseTab
                     inventory={inventory}
@@ -491,6 +499,7 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
                   onOpenPaymentDialog={openPaymentDialog}
                   openCustomerDebtHistoryDialog={openCustomerDebtHistoryDialog}
                   currentUser={currentUser}
+                  isCurrentUserCustomer={isCurrentUserCustomer}
                 />,
     'Khách hàng': <CustomerTab
                       customers={enhancedCustomersData}
@@ -561,19 +570,21 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
         />
         <SidebarInset>
           <div className="flex flex-col h-screen">
-            {/* Fixed Sidebar Trigger for mobile - always visible at top left */}
-            <SidebarTrigger className="md:hidden fixed top-4 left-4 z-50 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg rounded-lg p-2 transition-all duration-200">
-              <PanelLeft className="h-5 w-5" />
+            {/* Fixed Sidebar Trigger - positioned above account button on desktop */}
+            <SidebarTrigger className="fixed top-20 left-6 z-50 h-14 w-14 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center md:top-2 md:right-4 md:left-auto md:group-data-[state=expanded]:left-auto md:group-data-[state=expanded]:right-4">
+              <AlignJustify className="h-6 w-6 stroke-[3] text-white" />
             </SidebarTrigger>
             
             <TopSpenderMarquee customers={customersData} invoices={invoicesData} debts={debtsData} />
             <main className="flex-1 overflow-y-auto no-scrollbar">
               <div className="flex items-center mb-4 print:hidden px-4 pt-4 lg:px-6 lg:pt-6">
-                <h2 className="text-3xl font-bold text-foreground font-headline ml-12 md:ml-0">{isCurrentUserCustomer && activeTab === 'Đơn hàng' ? 'Đơn hàng của tôi' : activeTab}</h2>
+                <h2 className="text-3xl font-bold text-foreground font-headline ml-20 md:group-data-[state=collapsed]:ml-20 md:group-data-[state=expanded]:ml-0">{isCurrentUserCustomer && activeTab === 'Đơn hàng' ? 'Đơn hàng của tôi' : activeTab}</h2>
               </div>
               <div className="min-h-[calc(100vh-8rem)]">
                 {activeTab === 'Gian hàng' && (
-                  <div className="mb-6 -mt-4">
+                  <div className={`mb-6 -mt-4 relative transition-all duration-300 ${
+                    isProductDialogOpen ? 'hidden md:block' : 'block'
+                  }`} style={{ zIndex: 1 }}>
                     <HeroBanner hasFullAccessRights={hasFullAccessRights} />
                   </div>
                 )}
@@ -643,26 +654,6 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
         isLoadingShopInfo={isLoadingShopInfo}
       />
 
-      {!isMobile && (
-        <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={toggleSidebar}
-                className="fixed top-6 right-6 z-50 h-12 w-12 rounded-full bg-primary/80 text-primary-foreground shadow-lg hover:bg-primary/90 backdrop-blur-sm active:bg-primary/70 transition-all duration-150 ease-in-out hover:scale-105 print:hidden"
-                size="icon"
-                aria-label={sidebarStateOpen ? "Thu gọn thanh bên" : "Mở rộng thanh bên"}
-              >
-                {sidebarStateOpen ? <ChevronsLeft className="h-6 w-6" /> : <ChevronsRight className="h-6 w-6" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="bg-card text-card-foreground">
-              <p>{sidebarStateOpen ? 'Thu gọn thanh bên' : 'Mở rộng thanh bên'}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-      
       {isCurrentUserCustomer ? (
         <TooltipProvider delayDuration={0}>
             <Tooltip>
@@ -670,7 +661,7 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
                     <Button
                         onClick={() => setIsCartSheetOpen(true)}
                         className={cn(
-                            "fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-xl hover:bg-primary/90 active:bg-primary/80 transition-transform duration-150 ease-in-out hover:scale-105 print:hidden",
+                            "fixed bottom-20 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-xl hover:bg-primary/90 active:bg-primary/80 transition-transform duration-150 ease-in-out hover:scale-105 print:hidden",
                             customerCart.length > 0 && "animate-flash-and-grow"
                         )}
                         size="icon"
@@ -697,15 +688,15 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
                     <Button
                         onClick={() => setIsCartSheetOpen(true)}
                         className={cn(
-                            "fixed top-1/2 -translate-y-1/2 right-6 z-50 h-12 w-12 rounded-full bg-primary/80 text-primary-foreground shadow-lg hover:bg-primary/90 backdrop-blur-sm active:bg-primary/70 transition-all duration-150 ease-in-out hover:scale-105 print:hidden",
+                            "fixed top-20 right-6 z-50 h-14 w-14 rounded-full bg-primary/80 text-primary-foreground shadow-xl hover:bg-primary/90 backdrop-blur-sm active:bg-primary/70 transition-all duration-150 ease-in-out hover:scale-105 print:hidden",
                             cart.length > 0 && "animate-flash-and-grow"
                         )}
                         size="icon"
                         aria-label="Xem giỏ hàng"
                     >
-                        <ShoppingCartIcon className="h-6 w-6" />
+                        <ShoppingCartIcon className="h-7 w-7" />
                         {cart.length > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
+                            <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
                                 {cart.reduce((acc, item) => acc + item.quantityInCart, 0)}
                             </span>
                         )}
@@ -745,6 +736,7 @@ export default function FleurManagerPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerCart, setCustomerCart] = useState<CartItem[]>([]);
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   
   const [productNameOptions, setProductNameOptions] = useState<string[]>([]);
   const [colorOptions, setColorOptions] = useState<string[]>([]);
@@ -790,6 +782,11 @@ export default function FleurManagerPage() {
 
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
   const [selectedProductGroupForOrder, setSelectedProductGroupForOrder] = useState<Product[] | null>(null);
+
+  // Handler for product dialog state changes to control HeroBanner visibility
+  const handleProductDialogStateChange = useCallback((isOpen: boolean) => {
+    setIsProductDialogOpen(isOpen);
+  }, []);
 
   const isCurrentUserAdmin = useMemo(() => currentUser?.email === ADMIN_EMAIL, [currentUser]);
   const [currentUserEmployeeData, setCurrentUserEmployeeData] = useState<Employee | null>(null);
@@ -972,21 +969,28 @@ export default function FleurManagerPage() {
   }, [productToDeleteId, toast]);
 
   useEffect(() => {
-    const savedFontSize = localStorage.getItem('fleur-manager-font-size') as OverallFontSize | null;
-    if (savedFontSize && ['sm', 'md', 'lg'].includes(savedFontSize)) setOverallFontSize(savedFontSize);
-    
-    const savedNumericSize = localStorage.getItem('fleur-manager-numeric-size') as NumericDisplaySize | null;
-    const validSizes: NumericDisplaySize[] = ['text-xl', 'text-2xl', 'text-3xl', 'text-4xl'];
-    if (savedNumericSize && validSizes.includes(savedNumericSize)) setNumericDisplaySize(savedNumericSize);
+    // Only access localStorage on client side to prevent hydration mismatch
+    if (typeof window !== 'undefined') {
+      const savedFontSize = localStorage.getItem('fleur-manager-font-size') as OverallFontSize | null;
+      if (savedFontSize && ['sm', 'md', 'lg'].includes(savedFontSize)) setOverallFontSize(savedFontSize);
+      
+      const savedNumericSize = localStorage.getItem('fleur-manager-numeric-size') as NumericDisplaySize | null;
+      const validSizes: NumericDisplaySize[] = ['text-xl', 'text-2xl', 'text-3xl', 'text-4xl'];
+      if (savedNumericSize && validSizes.includes(savedNumericSize)) setNumericDisplaySize(savedNumericSize);
+    }
   }, []);
   
   useEffect(() => {
     document.documentElement.setAttribute('data-overall-font-size', overallFontSize);
-    localStorage.setItem('fleur-manager-font-size', overallFontSize);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fleur-manager-font-size', overallFontSize);
+    }
   }, [overallFontSize]);
 
   useEffect(() => {
-    localStorage.setItem('fleur-manager-numeric-size', numericDisplaySize);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fleur-manager-numeric-size', numericDisplaySize);
+    }
   }, [numericDisplaySize]);
 
 
@@ -1219,6 +1223,16 @@ export default function FleurManagerPage() {
     });
     return () => unsubscribeShopInfo();
   }, [currentUser, toast]);
+
+  // Effect to sync currentUserCustomerData with customersData for real-time updates
+  useEffect(() => {
+    if (isCurrentUserCustomer && currentUser && customersData.length > 0) {
+      const updatedCustomerData = customersData.find(customer => customer.id === currentUser.uid);
+      if (updatedCustomerData) {
+        setCurrentUserCustomerData(updatedCustomerData);
+      }
+    }
+  }, [customersData, currentUser, isCurrentUserCustomer]);
 
 
   const handleInvoiceFilterChange = useCallback((newFilter: ActivityDateTimeFilter) => setInvoiceFilter(newFilter), []);
@@ -1638,7 +1652,7 @@ export default function FleurManagerPage() {
   }, [cart, toast]);
 
   const onClearCart = useCallback(() => { setCart([]); }, []);
-  const handleCreateInvoice = useCallback(async (customerName: string, invoiceCartItems: CartItem[], subtotalAfterItemDiscounts: number, paymentMethod: string, amountPaid: number, isGuestCustomer: boolean, employeeId: string, employeeName: string, tierDiscount: number) => {
+  const handleCreateInvoice = useCallback(async (customerName: string, invoiceCartItems: CartItem[], subtotalAfterItemDiscounts: number, paymentMethod: string, amountPaid: number, isGuestCustomer: boolean, employeeId: string, employeeName: string, tierDiscount: number, redeemedPoints?: {points: number, value: number}) => {
     try {
       const finalTotal = subtotalAfterItemDiscounts;
       let calculatedDebtAmount = 0;
@@ -1700,6 +1714,66 @@ export default function FleurManagerPage() {
         ...(calculatedDebtAmount > 0 && { debtAmount: calculatedDebtAmount }),
       };
       await set(newInvoiceRef, newInvoiceData);
+
+      // Xử lý trừ điểm nếu khách đã đổi điểm (cho nhân viên bán hàng)
+      if (redeemedPoints && redeemedPoints.points > 0 && customerId) {
+        const customerRef = ref(db, `customers/${customerId}`);
+        const customerSnapshot = await get(customerRef);
+        
+        if (customerSnapshot.exists()) {
+          const customerData = customerSnapshot.val();
+          const currentPoints = customerData.points || 0;
+          
+          if (currentPoints >= redeemedPoints.points) {
+            const newPoints = currentPoints - redeemedPoints.points;
+            const newHistoryEntryRef = push(ref(db, `customers/${customerId}/pointsHistory`));
+            const newHistoryEntry = {
+              id: newHistoryEntryRef.key,
+              points: -redeemedPoints.points, // Số âm để biết là trừ điểm
+              date: new Date().toISOString(),
+              reason: 'redeem',
+              description: `Đổi ${redeemedPoints.points} điểm lấy ${redeemedPoints.value.toLocaleString('vi-VN')} VNĐ`,
+              invoiceId: invoiceId,
+            };
+            
+            const pointsUpdates: { [key: string]: any } = {};
+            pointsUpdates[`customers/${customerId}/points`] = newPoints;
+            pointsUpdates[`customers/${customerId}/pointsHistory/${newHistoryEntryRef.key}`] = newHistoryEntry;
+            
+            await update(ref(db), pointsUpdates);
+            
+            // Note: Removed local state update here to prevent duplicates - Firebase listener will handle state updates
+            // Cập nhật local state ngay lập tức cho nhân viên bán hàng
+            setCustomersData(prevCustomers => 
+              prevCustomers.map(customer => {
+                if (customer.id === customerId) {
+                  const historyEntry = {
+                    id: newHistoryEntryRef.key || `temp-${Date.now()}`,
+                    points: -redeemedPoints.points,
+                    date: new Date().toISOString(),
+                    reason: 'redeem' as const,
+                    description: `Đổi ${redeemedPoints.points} điểm lấy ${redeemedPoints.value.toLocaleString('vi-VN')} VNĐ`,
+                    invoiceId: invoiceId,
+                  };
+                  
+                  // Đảm bảo pointsHistory là array trước khi spread
+                  const existingHistory = Array.isArray(customer.pointsHistory) ? customer.pointsHistory : [];
+                  
+                  return {
+                    ...customer,
+                    points: newPoints,
+                    pointsHistory: [...existingHistory, historyEntry]
+                  };
+                }
+                return customer;
+              })
+            );
+          } else {
+            console.error("Lỗi: Khách hàng không có đủ điểm để trừ");
+          }
+        }
+      }
+
       if (calculatedDebtAmount > 0) {
         const newDebtRef = push(ref(db, 'debts'));
         const newDebt: Omit<Debt, 'id'> = {
@@ -2455,12 +2529,115 @@ export default function FleurManagerPage() {
                 // Add invoice creation to updates
                 updates[`invoices/${newInvoiceId}`] = invoiceData;
 
-            // 3. Mark order for deletion
+                // 3. Xử lý trừ điểm nếu đơn hàng có đổi điểm
+                let pointsProcessMessage = "";
+                if (orderToUpdate.redeemedPoints && orderToUpdate.redeemedPoints.points > 0) {
+                    const customerRef = ref(db, `customers/${orderToUpdate.customerId}`);
+                    const customerSnapshot = await get(customerRef);
+                    
+                    if (customerSnapshot.exists()) {
+                        const customerData = customerSnapshot.val();
+                        const currentPoints = customerData.points || 0;
+                        
+                        if (currentPoints >= orderToUpdate.redeemedPoints.points) {
+                            const newPoints = currentPoints - orderToUpdate.redeemedPoints.points;
+                            const newHistoryEntryRef = push(ref(db, `customers/${orderToUpdate.customerId}/pointsHistory`));
+                            const newHistoryEntry = {
+                                id: newHistoryEntryRef.key,
+                                points: -orderToUpdate.redeemedPoints.points, // Số âm để biết là trừ điểm
+                                date: new Date().toISOString(),
+                                reason: 'redeem',
+                                description: `Đổi ${orderToUpdate.redeemedPoints.points} điểm lấy ${orderToUpdate.redeemedPoints.value.toLocaleString('vi-VN')} VNĐ (Đơn hàng #${orderToUpdate.orderNumber})`,
+                                orderId: orderId,
+                                invoiceId: newInvoiceId,
+                            };
+                            
+                            updates[`customers/${orderToUpdate.customerId}/points`] = newPoints;
+                            updates[`customers/${orderToUpdate.customerId}/pointsHistory/${newHistoryEntryRef.key}`] = newHistoryEntry;
+                            pointsProcessMessage = ` Đã trừ ${orderToUpdate.redeemedPoints.points} điểm của khách hàng.`;
+                        } else {
+                            // Không đủ điểm - ghi log nhưng vẫn hoàn thành đơn hàng
+                            pointsProcessMessage = ` ⚠️ CẢNH BÁO: Khách hàng không đủ điểm để trừ (${currentPoints}/${orderToUpdate.redeemedPoints.points}). Vui lòng kiểm tra lại.`;
+                        }
+                    } else {
+                        pointsProcessMessage = ` ⚠️ CẢNH BÁO: Không tìm thấy thông tin khách hàng để trừ điểm.`;
+                    }
+                }
+
+            // 4. Mark order for deletion
             updates[`orders/${orderId}`] = null;
             
-            // 4. Atomically execute all updates
-            await update(ref(db), updates);
-            toast({ title: "Thành công", description: `Đơn hàng #${orderId.substring(0,6)}... đã được hoàn tất và chuyển thành hóa đơn.`, duration: 2000 });
+            // 5. Atomically execute all updates
+            try {
+                await update(ref(db), updates);
+                
+                // 6. Cập nhật local state ngay lập tức để phản ánh thay đổi theo thời gian thực
+                if (orderToUpdate.redeemedPoints && orderToUpdate.redeemedPoints.points > 0) {
+                    setCustomersData(prevCustomers => 
+                        prevCustomers.map(customer => {
+                            if (customer.id === orderToUpdate.customerId) {
+                                const currentPoints = customer.points || 0;
+                                if (currentPoints >= orderToUpdate.redeemedPoints!.points) {
+                                    const newPoints = currentPoints - orderToUpdate.redeemedPoints!.points;
+                                    const newHistoryEntry = {
+                                        id: `temp-${Date.now()}`, // Temporary ID, Firebase will replace
+                                        points: -orderToUpdate.redeemedPoints!.points,
+                                        date: new Date().toISOString(),
+                                        reason: 'redeem' as const,
+                                        description: `Đổi ${orderToUpdate.redeemedPoints!.points} điểm lấy ${orderToUpdate.redeemedPoints!.value.toLocaleString('vi-VN')} VNĐ (Đơn hàng #${orderToUpdate.orderNumber})`,
+                                        orderId: orderId,
+                                        invoiceId: newInvoiceId,
+                                    };
+                                    
+                                    // Đảm bảo pointsHistory là array trước khi spread
+                                    const existingHistory = Array.isArray(customer.pointsHistory) ? customer.pointsHistory : [];
+                                    
+                                    return {
+                                        ...customer,
+                                        points: newPoints,
+                                        pointsHistory: [...existingHistory, newHistoryEntry]
+                                    };
+                                }
+                            }
+                            return customer;
+                        })
+                    );
+                }
+                
+                // 7. Cập nhật ordersData để xóa đơn hàng đã hoàn thành
+                setOrdersData(prevOrders => prevOrders.filter(order => order.id !== orderId));
+                
+                // 8. Cập nhật inventory local state
+                setInventory(prevInventory => 
+                    prevInventory.map(product => {
+                        const orderItem = orderToUpdate.items.find(item => item.id === product.id);
+                        if (orderItem) {
+                            return {
+                                ...product,
+                                quantity: product.quantity - orderItem.quantityInCart
+                            };
+                        }
+                        return product;
+                    })
+                );
+                
+                // Note: Removed manual local state update for invoice to prevent duplicates
+                // Firebase listener will automatically update invoicesData when new invoice is added
+                
+            } catch (updateError) {
+                console.error(`❌ Lỗi khi update Firebase:`, updateError);
+                throw updateError; // Re-throw để hiển thị lỗi cho user
+            }
+            
+            const toastVariant = pointsProcessMessage.includes("⚠️") ? "default" : "default";
+            const toastDuration = pointsProcessMessage.includes("⚠️") ? 5000 : 2000;
+            
+            toast({ 
+                title: "Thành công", 
+                description: `Đơn hàng #${orderId.substring(0,6)}... đã được hoàn tất và chuyển thành hóa đơn.${pointsProcessMessage}`, 
+                variant: toastVariant,
+                duration: toastDuration 
+            });
 
         } else if (newStatus === 'Đã hủy') {
             // This case is now handled by handleConfirmCancel, but if called directly, it deletes the order.
@@ -2730,7 +2907,17 @@ export default function FleurManagerPage() {
       setCustomerCart(prev => prev.filter(item => item.id !== itemId));
   }, []);
 
-  const handleConfirmOrderFromCart = useCallback(async (discountAmount: number) => {
+  const handleConfirmOrderFromCart = useCallback(async (discountAmount: number, redeemedPoints?: { points: number; value: number }) => {
+    console.log('🔍 handleConfirmOrderFromCart called with:', {
+        discountAmount,
+        redeemedPoints,
+        redeemedPoints_type: typeof redeemedPoints,
+        points_type: redeemedPoints ? typeof redeemedPoints.points : 'N/A',
+        value_type: redeemedPoints ? typeof redeemedPoints.value : 'N/A',
+        points_value: redeemedPoints?.points,
+        value_value: redeemedPoints?.value
+    });
+    
     if (customerCart.length === 0) {
         toast({ title: "Lỗi", description: "Giỏ hàng của bạn đang trống.", variant: "destructive", duration: 2000 });
         return;
@@ -2784,7 +2971,29 @@ export default function FleurManagerPage() {
         paymentMethod: 'Chuyển khoản',
         orderStatus: 'Chờ xác nhận',
         orderDate: new Date().toISOString(),
+        // Lưu thông tin điểm đổi để xử lý sau - với kiểm tra strict
+        redeemedPoints: (() => {
+            // Kiểm tra xem redeemedPoints có tồn tại và hợp lệ không
+            if (!redeemedPoints) return undefined;
+            
+            const { points, value } = redeemedPoints;
+            
+            // Kiểm tra strict - cả hai phải là số và > 0
+            if (typeof points !== 'number' || typeof value !== 'number' || 
+                points <= 0 || value <= 0 || 
+                isNaN(points) || isNaN(value)) {
+                return undefined;
+            }
+            
+            return { points, value };
+        })(),
     };
+    
+    console.log('🔍 Final newOrderData before Firebase:', {
+        newOrderData,
+        redeemedPoints_in_data: newOrderData.redeemedPoints,
+        redeemedPoints_type: typeof newOrderData.redeemedPoints
+    });
     
     try {
         const newOrderRef = push(ref(db, 'orders'));
@@ -2794,9 +3003,15 @@ export default function FleurManagerPage() {
         }
         await set(newOrderRef, newOrderData);
 
+        const successMessage = redeemedPoints && redeemedPoints.points > 0 
+            ? `Đơn hàng đã được tạo thành công! Mã đơn hàng: ${newOrderId}. 
+               Bạn đã đổi ${redeemedPoints.points} điểm (${redeemedPoints.value.toLocaleString('vi-VN')} VNĐ). 
+               Điểm sẽ được trừ khi đơn hàng được hoàn thành.`
+            : `Đơn hàng đã được tạo thành công! Mã đơn hàng: ${newOrderId}. Vui lòng sử dụng mã này khi thanh toán.`;
+
         toast({
             title: "Đơn hàng đã được tạo thành công!",
-            description: `Mã đơn hàng của bạn là: ${newOrderId}. Vui lòng sử dụng mã này khi thanh toán.`,
+            description: successMessage,
             duration: 10000, // Keep the toast open longer
         });
         setIsCartSheetOpen(false);
@@ -2912,7 +3127,8 @@ export default function FleurManagerPage() {
     selectedCustomer: Customer | null,
     paymentMethod: string,
     amountPaid: string,
-    tierDiscount: number
+    tierDiscount: number,
+    redeemedPoints?: {points: number, value: number}
   ) => {
     const isGuest = selectedCustomer === null;
     const customerName = isGuest ? 'Khách lẻ' : selectedCustomer.name;
@@ -2934,7 +3150,8 @@ export default function FleurManagerPage() {
       isGuest,
       currentUser?.uid || '',
       currentUser?.displayName || '',
-      tierDiscount
+      tierDiscount,
+      redeemedPoints
     );
 
     if (success) {
@@ -3018,6 +3235,8 @@ export default function FleurManagerPage() {
           isCartAnimating={isCartAnimating}
           salesTabRef={salesTabRef}
           handleSaveProductDescription={handleSaveProductDescription}
+          isProductDialogOpen={isProductDialogOpen}
+          handleProductDialogStateChange={handleProductDialogStateChange}
         />
         {/* <ProductOrderDialog
             isOpen={isOrderDialogOpen}
@@ -3033,7 +3252,7 @@ export default function FleurManagerPage() {
               customer={currentUserCustomerData}
               onUpdateQuantity={onUpdateCustomerCartQuantity}
               onRemoveItem={onRemoveFromCustomerCart}
-              onPlaceOrder={handleConfirmOrderFromCart as any}
+              onPlaceOrder={handleConfirmOrderFromCart}
               inventory={inventory}
               invoices={invoicesData}
               onOpenNoteEditor={handleOpenNoteEditor}
@@ -3114,6 +3333,12 @@ export default function FleurManagerPage() {
           customerId={selectedCustomerForHistory?.id || ''}
           customerName={selectedCustomerForHistory?.name || ''}
         />
+        
+        {/* Customer Account Header Button */}
+        <CustomerAccountHeaderButton 
+          customer={isCurrentUserCustomer ? currentUserCustomerData : null}
+        />
+        
       </SidebarProvider>
     );
   }

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Banner } from '@/types';
@@ -121,6 +121,9 @@ export function BannerManagerDialog({ isOpen, onClose, banners, onBannersChange 
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Manage Banners</DialogTitle>
+          <DialogDescription>
+            Quản lý thứ tự và nội dung các banner hiển thị trên gian hàng. Kéo thả để sắp xếp lại thứ tự.
+          </DialogDescription>
         </DialogHeader>
         <div className="py-4 max-h-[60vh] overflow-y-auto">
           <Reorder.Group axis="y" values={localBanners} onReorder={setLocalBanners}>

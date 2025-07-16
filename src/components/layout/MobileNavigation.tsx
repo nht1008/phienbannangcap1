@@ -173,11 +173,11 @@ export const MobileNavigation = React.memo(({
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start gap-2 min-h-[44px]"
+                    className="mobile-options-button w-full justify-start gap-2 min-h-[44px] text-sm"
                     data-testid="mobile-options-button"
                   >
-                    <Settings className="w-4 h-4" />
-                    <span>Tùy chọn</span>
+                    <div className="text-lg font-black text-current leading-none">•••</div>
+                    <span className="truncate">Tùy chọn</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent

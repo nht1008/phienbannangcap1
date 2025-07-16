@@ -22,6 +22,7 @@ import { RedeemPointsDialog } from '@/components/points/RedeemPointsDialog';
 import VipTierBadge from '@/components/shared/VipTierBadge';
 import type { Customer } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { formatCompactCurrency } from '@/lib/utils';
 
 interface CustomerCartSheetProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ interface CustomerCartSheetProps {
   customer: Customer | null;
   onUpdateQuantity: (itemId: string, newQuantity: string) => void;
   onRemoveItem: (itemId: string) => void;
-  onPlaceOrder: (discountAmount: number) => void;
+  onPlaceOrder: (discountAmount: number, redeemedPoints?: {points: number, value: number}) => void;
   inventory: Product[];
   invoices: Invoice[];
   onOpenNoteEditor: (itemId: string) => void;
@@ -50,8 +51,8 @@ export function CustomerCartSheet({
 }: CustomerCartSheetProps) {
 
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantityInCart, 0);
-  const discountResult = calculateDiscount(customer, totalAmount, invoices);
-  const { discountAmount, discountPercentage, remainingUses, usagePeriod } = discountResult;
+  const [appliedTierDiscount, setAppliedTierDiscount] = useState({ amount: 0, percentage: 0 });
+  const [tierDiscountInfo, setTierDiscountInfo] = useState<{ remaining?: number; period?: string }>({});
   const [paymentMethod, setPaymentMethod] = useState('transfer');
   const [isRedeemDialogOpen, setIsRedeemDialogOpen] = useState(false);
   const [redeemedPoints, setRedeemedPoints] = useState({ points: 0, value: 0 });
@@ -61,18 +62,69 @@ export function CustomerCartSheet({
   useEffect(() => {
     if (!isOpen) {
       setRedeemedPoints({ points: 0, value: 0 });
+      setAppliedTierDiscount({ amount: 0, percentage: 0 });
+      setTierDiscountInfo({});
       setIsQRDialogOpen(false);
     }
   }, [isOpen]);
 
+  const handleApplyTierDiscount = () => {
+    if (redeemedPoints.value > 0) {
+      toast({ title: "Lỗi", description: "Không thể áp dụng ưu đãi hạng khi đã đổi điểm.", variant: "destructive" });
+      return;
+    }
+    if (customer) {
+      const result = calculateDiscount(customer, totalAmount, invoices);
+      setTierDiscountInfo({ remaining: result.remainingUses, period: result.usagePeriod });
+      if (result.success) {
+        setAppliedTierDiscount({ amount: result.discountAmount, percentage: result.discountPercentage });
+        toast({
+          title: "Thành công",
+          description: result.message,
+          variant: "default",
+        });
+      } else {
+        setAppliedTierDiscount({ amount: 0, percentage: 0 });
+        toast({
+          title: "Không thể áp dụng",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } else {
+      toast({
+        title: "Chưa có khách hàng",
+        description: "Vui lòng đăng nhập để áp dụng ưu đãi.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelTierDiscount = () => {
+    setAppliedTierDiscount({ amount: 0, percentage: 0 });
+    setTierDiscountInfo({});
+    toast({
+      title: "Đã hủy",
+      description: "Đã hủy bỏ ưu đãi cấp bậc.",
+      variant: "default",
+    });
+  };
+
   const handleRedeem = (points: number, value: number) => {
-    if (discountAmount > 0) {
+    if (appliedTierDiscount.amount > 0) {
       toast({ title: "Lỗi", description: "Không thể đổi điểm khi đang áp dụng ưu đãi hạng.", variant: "destructive" });
       return;
     }
+    
+    // Ensure points and value are valid numbers
+    if (typeof points !== 'number' || typeof value !== 'number' || points <= 0 || value <= 0) {
+      toast({ title: "Lỗi", description: "Dữ liệu điểm không hợp lệ.", variant: "destructive" });
+      return;
+    }
+    
     setRedeemedPoints({ points, value });
     setIsRedeemDialogOpen(false);
-    toast({ title: "Thành công", description: `Đã đổi ${points} điểm để được giảm ${value.toLocaleString('vi-VN')} VNĐ.` });
+    toast({ title: "Thành công", description: `Đã đổi ${points} điểm để được giảm ${formatCompactCurrency(value)}.` });
   };
 
   const handleCancelRedemption = () => {
@@ -88,7 +140,7 @@ export function CustomerCartSheet({
      setIsQRDialogOpen(true);
    };
   
-  const finalTotal = totalAmount - discountAmount - redeemedPoints.value;
+  const finalTotal = totalAmount - appliedTierDiscount.amount - redeemedPoints.value;
   
   return (
     <>
@@ -105,8 +157,8 @@ export function CustomerCartSheet({
             
             {/* Customer Info Row - Mobile Optimized */}
             {customer && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border bg-muted/50">
-                {/* Points Display */}
+              <div className="flex flex-col gap-3 p-3 rounded-lg border bg-muted/50">
+                {/* Points Display Row */}
                 <div className="flex items-center justify-between sm:justify-start gap-2">
                   <div className="flex items-center text-sm sm:text-base">
                     <Star className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-amber-500" />
@@ -124,7 +176,7 @@ export function CustomerCartSheet({
                     </span>
                   </div>
                   
-                  {/* Action Button */}
+                  {/* Points Action Button */}
                   <div className="sm:ml-auto">
                     {redeemedPoints.value > 0 ? (
                       <Button onClick={handleCancelRedemption} variant="destructive" size="sm" className="h-8 text-xs">
@@ -137,6 +189,40 @@ export function CustomerCartSheet({
                     )}
                   </div>
                 </div>
+
+                {/* Tier Discount Row */}
+                {customer.tier && customer.tier !== 'Vô danh' && (
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                    <div className="flex items-center text-sm sm:text-base">
+                      <span className="font-medium text-muted-foreground">Ưu đãi hạng:</span>
+                      <span className="ml-2 font-bold text-primary">
+                        {appliedTierDiscount.amount > 0 ? (
+                          `Đã giảm ${formatCompactCurrency(appliedTierDiscount.amount)}`
+                        ) : (
+                          'Chưa áp dụng'
+                        )}
+                      </span>
+                      {tierDiscountInfo.period && typeof tierDiscountInfo.remaining === 'number' && appliedTierDiscount.amount > 0 && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (Còn {tierDiscountInfo.remaining - 1 < 0 ? 0 : tierDiscountInfo.remaining - 1} lượt/{tierDiscountInfo.period})
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Tier Discount Action Button */}
+                    <div>
+                      {appliedTierDiscount.amount > 0 ? (
+                        <Button onClick={handleCancelTierDiscount} variant="destructive" size="sm" className="h-8 text-xs">
+                          Hủy ưu đãi
+                        </Button>
+                      ) : (
+                        <Button onClick={handleApplyTierDiscount} variant="outline" size="sm" className="h-8 text-xs">
+                          Áp dụng ưu đãi
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -188,8 +274,7 @@ export function CustomerCartSheet({
                                       </TableCell>
                                       <TableCell>{item.unit}</TableCell>
                                       <TableCell className="text-right">
-                                          <div className="font-medium">{item.price.toLocaleString('vi-VN')}</div>
-                                          <div className="text-xs text-muted-foreground">VNĐ</div>
+                                          <div className="font-medium">{formatCompactCurrency(item.price)}</div>
                                       </TableCell>
                                       <TableCell>
                                           <div className="flex items-center justify-center gap-1">
@@ -223,8 +308,7 @@ export function CustomerCartSheet({
                                           </div>
                                       </TableCell>
                                       <TableCell className="text-right font-semibold text-primary">
-                                          <div className="font-semibold">{(item.price * item.quantityInCart).toLocaleString('vi-VN')}</div>
-                                          <div className="text-xs text-muted-foreground">VNĐ</div>
+                                          <div className="font-semibold">{formatCompactCurrency(item.price * item.quantityInCart)}</div>
                                       </TableCell>
                                       <TableCell className="text-center">
                                         <div className="flex justify-center gap-1">
@@ -286,7 +370,7 @@ export function CustomerCartSheet({
                                     <span>Đơn vị:</span> <span className="text-foreground font-medium">{item.unit}</span>
                                   </p>
                                 )}
-                                <p className="text-sm font-medium text-primary">{item.price.toLocaleString('vi-VN')} VNĐ</p>
+                                <p className="text-sm font-medium text-primary">{formatCompactCurrency(item.price)}</p>
                               </div>
                             </div>
                           </div>
@@ -350,7 +434,7 @@ export function CustomerCartSheet({
                           <div className="text-right">
                             <div className="text-xs text-muted-foreground">Thành tiền</div>
                             <p className="font-semibold text-sm text-primary">
-                              {(item.price * item.quantityInCart).toLocaleString('vi-VN')} VNĐ
+                              {formatCompactCurrency(item.price * item.quantityInCart)}
                             </p>
                           </div>
                         </div>
@@ -365,30 +449,30 @@ export function CustomerCartSheet({
                     <div className="w-full">
                       <div className="flex justify-between w-full text-base sm:text-lg font-semibold">
                         <p>Tổng cộng:</p>
-                        <p>{totalAmount.toLocaleString('vi-VN')} VNĐ</p>
+                        <p>{formatCompactCurrency(totalAmount)}</p>
                       </div>
-                      {discountAmount > 0 && (
+                      {appliedTierDiscount.amount > 0 && (
                         <div className="flex justify-between w-full text-sm sm:text-lg font-semibold text-green-600">
                           <div className="flex flex-col">
-                            <p>Giảm giá ({customer?.tier} - {Math.round(discountPercentage * 100) / 100}%):</p>
-                            {usagePeriod && typeof remainingUses === 'number' && (
+                            <p>Giảm giá ({customer?.tier} - {Math.round(appliedTierDiscount.percentage * 100) / 100}%):</p>
+                            {tierDiscountInfo.period && typeof tierDiscountInfo.remaining === 'number' && (
                               <p className="text-xs text-muted-foreground font-normal">
-                                (Còn {remainingUses - 1 < 0 ? 0 : remainingUses - 1} lượt trong {usagePeriod} này)
+                                (Còn {tierDiscountInfo.remaining - 1 < 0 ? 0 : tierDiscountInfo.remaining - 1} lượt trong {tierDiscountInfo.period} này)
                               </p>
                             )}
                           </div>
-                          <p>-{discountAmount.toLocaleString('vi-VN')} VNĐ</p>
+                          <p>-{formatCompactCurrency(appliedTierDiscount.amount)}</p>
                         </div>
                       )}
                       {redeemedPoints.value > 0 && (
                         <div className="flex justify-between w-full text-sm sm:text-lg font-semibold text-green-600">
                           <p>Đổi điểm:</p>
-                          <p>-{redeemedPoints.value.toLocaleString('vi-VN')} VNĐ</p>
+                          <p>-{formatCompactCurrency(redeemedPoints.value)}</p>
                         </div>
                       )}
                       <div className="flex justify-between w-full text-lg sm:text-xl font-bold text-primary">
                         <p>Thành tiền:</p>
-                        <p>{finalTotal.toLocaleString('vi-VN')} VNĐ</p>
+                        <p>{formatCompactCurrency(finalTotal)}</p>
                       </div>
                       
                       {/* Payment Section - Mobile Optimized */}
@@ -442,7 +526,7 @@ export function CustomerCartSheet({
           />
           <div className="text-center space-y-2">
             <p className="text-lg font-bold text-primary">
-              Tổng tiền: {finalTotal.toLocaleString('vi-VN')} VNĐ
+              Tổng tiền: {formatCompactCurrency(finalTotal)}
             </p>
             <p className="text-sm text-muted-foreground">
               Nội dung: Thanh toan don hang
@@ -458,7 +542,30 @@ export function CustomerCartSheet({
           <div className="flex gap-2 w-full">
             <Button 
               onClick={() => {
-                onPlaceOrder(discountAmount > 0 ? discountAmount : redeemedPoints.value);
+                console.log('🔍 CustomerCartSheet onClick - redeemedPoints state:', {
+                  redeemedPoints,
+                  redeemedPoints_type: typeof redeemedPoints,
+                  points: redeemedPoints?.points,
+                  value: redeemedPoints?.value,
+                  points_type: typeof redeemedPoints?.points,
+                  value_type: typeof redeemedPoints?.value
+                });
+                
+                const redeemedPointsData = redeemedPoints && 
+                                          typeof redeemedPoints.points === 'number' && 
+                                          typeof redeemedPoints.value === 'number' && 
+                                          redeemedPoints.points > 0 && 
+                                          redeemedPoints.value > 0 ? {
+                  points: redeemedPoints.points,
+                  value: redeemedPoints.value
+                } : undefined;
+                
+                console.log('🔍 redeemedPointsData created:', redeemedPointsData);
+                
+                onPlaceOrder(
+                  appliedTierDiscount.amount > 0 ? appliedTierDiscount.amount : (redeemedPoints?.value || 0), 
+                  redeemedPointsData
+                );
                 setIsQRDialogOpen(false);
                 toast({ 
                   title: "Thành công", 

@@ -31,7 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn, formatPhoneNumber, normalizeStringForSearch, getCustomerTierClass } from '@/lib/utils';
+import { cn, formatPhoneNumber, normalizeStringForSearch, getCustomerTierClass, formatCompactCurrency } from '@/lib/utils';
 import type { NumericDisplaySize } from '@/components/settings/SettingsDialog';
 import { useToast } from '@/hooks/use-toast';
 import { getProductThumbnailWithSize } from '@/lib/product-thumbnail-utils';
@@ -871,8 +871,8 @@ export const SalesTab = React.forwardRef<SalesTabHandles, SalesTabProps>(({
                                   <span className="truncate" title={variant.quality || ''}>{variant.quality || 'N/A'}</span>
                                   <span className="truncate" title={variant.size}>{variant.size}</span>
                                   <span className="truncate" title={variant.unit}>{variant.unit}</span>
-                                  <span className="text-right truncate font-semibold" title={variant.price.toLocaleString('vi-VN') + ' VNĐ'}>
-                                    {variant.price.toLocaleString('vi-VN')}
+                                  <span className="text-right truncate font-semibold" title={formatCompactCurrency(variant.price)}>
+                                    {formatCompactCurrency(variant.price)}
                                   </span>
                                   <span className="text-right truncate" title={'Tồn: ' + variant.quantity.toString()}>{variant.quantity}</span>
                                 </div>
@@ -890,8 +890,8 @@ export const SalesTab = React.forwardRef<SalesTabHandles, SalesTabProps>(({
                                       />
                                       <span className="font-medium truncate" title={variant.name}>{variant.name}</span>
                                     </div>
-                                    <span className="font-semibold text-right truncate pl-2" title={variant.price.toLocaleString('vi-VN') + ' VNĐ'}>
-                                      {variant.price.toLocaleString('vi-VN')} VNĐ
+                                    <span className="font-semibold text-right truncate pl-2" title={formatCompactCurrency(variant.price)}>
+                                      {formatCompactCurrency(variant.price)}
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-between pl-8 pt-1">
@@ -1233,7 +1233,7 @@ export const SalesTab = React.forwardRef<SalesTabHandles, SalesTabProps>(({
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">Giá:</span>
                       <span className="bg-green-500 text-white font-bold text-sm px-2 py-1 rounded">
-                        {priceToShow.toLocaleString('vi-VN')} VNĐ
+                        {formatCompactCurrency(priceToShow)}
                       </span>
                     </div>
                   );
@@ -1374,7 +1374,7 @@ export const SalesTab = React.forwardRef<SalesTabHandles, SalesTabProps>(({
 
             <div className="flex justify-between items-center">
               <Label>Tổng tiền hàng (sau Giảm giá SP):</Label>
-              <span className={cn("font-semibold", numericDisplaySize)}>{subtotalAfterItemDiscounts.toLocaleString('vi-VN')} VNĐ</span>
+              <span className={cn("font-semibold", numericDisplaySize)}>{formatCompactCurrency(subtotalAfterItemDiscounts)}</span>
             </div>
 
             <div>
@@ -1391,7 +1391,7 @@ export const SalesTab = React.forwardRef<SalesTabHandles, SalesTabProps>(({
 
             <div className="flex justify-between items-center text-red-500">
               <Label className={cn("text-red-500", numericDisplaySize === "text-xl" ? "text-lg" : numericDisplaySize === "text-2xl" ? "text-xl" : numericDisplaySize === "text-3xl" ? "text-2xl" : "text-3xl" )}>Thành tiền:</Label>
-              <span className={cn("font-semibold", numericDisplaySize)}>{finalTotalAfterAllDiscounts.toLocaleString('vi-VN')} VNĐ</span>
+              <span className={cn("font-semibold", numericDisplaySize)}>{formatCompactCurrency(finalTotalAfterAllDiscounts)}</span>
             </div>
             <Separator/>
 
@@ -1410,12 +1410,12 @@ export const SalesTab = React.forwardRef<SalesTabHandles, SalesTabProps>(({
 
             <div className="flex justify-between items-center">
               <Label className={cn(numericDisplaySize === "text-xl" ? "text-lg" : numericDisplaySize === "text-2xl" ? "text-xl" : numericDisplaySize === "text-3xl" ? "text-2xl" : "text-3xl" )}>Tiền thừa:</Label>
-              <span className={cn("font-semibold", numericDisplaySize)}>{changeVND >= 0 && actualAmountPaidVND > 0 && actualAmountPaidVND >= finalTotalAfterAllDiscounts ? changeVND.toLocaleString('vi-VN') : '0'} VNĐ</span>
+              <span className={cn("font-semibold", numericDisplaySize)}>{changeVND >= 0 && actualAmountPaidVND > 0 && actualAmountPaidVND >= finalTotalAfterAllDiscounts ? formatCompactCurrency(changeVND) : '0'}</span>
             </div>
             {finalTotalAfterAllDiscounts > actualAmountPaidVND && selectedCustomer && currentPaymentMethod !== 'Chuyển khoản' && (
                  <div className="flex justify-between items-center text-red-600">
                     <Label className={cn("text-red-600", numericDisplaySize === "text-xl" ? "text-lg" : numericDisplaySize === "text-2xl" ? "text-xl" : numericDisplaySize === "text-3xl" ? "text-2xl" : "text-3xl" )}>Còn nợ:</Label>
-                    <span className={cn("font-semibold", numericDisplaySize)}>{(finalTotalAfterAllDiscounts - actualAmountPaidVND).toLocaleString('vi-VN')} VNĐ</span>
+                    <span className={cn("font-semibold", numericDisplaySize)}>{formatCompactCurrency(finalTotalAfterAllDiscounts - actualAmountPaidVND)}</span>
                 </div>
             )}
           </div>
@@ -1483,11 +1483,11 @@ export const SalesTab = React.forwardRef<SalesTabHandles, SalesTabProps>(({
                       Lô {batch.batchNumber}{ageLabel}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Tồn kho: {batch.quantity} | Giá: {batch.product.price.toLocaleString('vi-VN')} VNĐ
+                      Tồn kho: {batch.quantity} | Giá: {formatCompactCurrency(batch.product.price)}
                     </div>
                     {batch.product.costPrice && (
                       <div className="text-xs text-muted-foreground">
-                        Giá gốc: {batch.product.costPrice.toLocaleString('vi-VN')} VNĐ
+                        Giá gốc: {formatCompactCurrency(batch.product.costPrice)}
                       </div>
                     )}
                   </div>

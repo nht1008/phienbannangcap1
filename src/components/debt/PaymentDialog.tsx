@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -95,6 +96,9 @@ export function PaymentDialog({ isOpen, onOpenChange, debt, currentUser, onAddPa
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">Ghi nhận thanh toán</DialogTitle>
+          <DialogDescription>
+            Ghi nhận số tiền khách hàng đã thanh toán. Nhập số tiền bằng nghìn VNĐ.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex gap-8 py-4">
            <div className="flex-1 space-y-4">

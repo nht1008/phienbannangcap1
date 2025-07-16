@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetDescrip
 import { Trash2, Minus, Plus, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { formatCompactCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { calculateDiscount } from '@/lib/tiers';
 import VipTierBadge from '@/components/shared/VipTierBadge';
@@ -36,7 +37,8 @@ interface EmployeeCartSheetProps {
     selectedCustomer: Customer | null,
     paymentMethod: string,
     amountPaid: string,
-    tierDiscount: number
+    tierDiscount: number,
+    redeemedPoints?: {points: number, value: number}
   ) => void;
   areAllItemDiscountsValid: boolean;
 }
@@ -151,9 +153,16 @@ export function EmployeeCartSheet({
       toast({ title: "Lỗi", description: "Không thể đổi điểm khi đã áp dụng ưu đãi hạng.", variant: "destructive" });
       return;
     }
+    
+    // Ensure points and value are valid numbers
+    if (typeof points !== 'number' || typeof value !== 'number' || points <= 0 || value <= 0) {
+      toast({ title: "Lỗi", description: "Dữ liệu điểm không hợp lệ.", variant: "destructive" });
+      return;
+    }
+    
     setRedeemedPoints({ points, value });
     setIsRedeemDialogOpen(false);
-    toast({ title: "Thành công", description: `Đã đổi ${points} điểm để được giảm ${value.toLocaleString('vi-VN')} VNĐ.` });
+    toast({ title: "Thành công", description: `Đã đổi ${points} điểm để được giảm ${formatCompactCurrency(value)}.` });
   };
 
   const handleCancelRedemption = () => {
@@ -619,12 +628,10 @@ export function EmployeeCartSheet({
                               </div>
                             </TableCell>
                             <TableCell className="text-right py-2 align-middle text-sm">
-                              <div className="font-medium">{item.price.toLocaleString('vi-VN')}</div>
-                              <div className="text-xs text-muted-foreground">VNĐ</div>
+                              <div className="font-medium">{formatCompactCurrency(item.price)}</div>
                             </TableCell>
                             <TableCell className="text-right py-2 align-middle font-semibold text-sm text-primary">
-                              <div className="font-semibold">{itemFinalTotal.toLocaleString('vi-VN')}</div>
-                              <div className="text-xs text-muted-foreground">VNĐ</div>
+                              <div className="font-semibold">{formatCompactCurrency(itemFinalTotal)}</div>
                             </TableCell>
                             <TableCell className="text-center py-2 align-middle">
                               <Button
@@ -685,7 +692,7 @@ export function EmployeeCartSheet({
                                   )}
                                 </div>
                               </div>
-                              <p className="text-sm font-medium text-primary mt-1">{item.price.toLocaleString('vi-VN')} VNĐ</p>
+                              <p className="text-sm font-medium text-primary mt-1">{formatCompactCurrency(item.price)}</p>
                             </div>
                           </div>
                           <Button
@@ -725,12 +732,12 @@ export function EmployeeCartSheet({
                           </div>
                           <div className="text-right">
                             <div className="text-xs text-muted-foreground">Đơn giá</div>
-                            <p className="font-medium text-sm">{item.price.toLocaleString('vi-VN')} VNĐ</p>
+                            <p className="font-medium text-sm">{formatCompactCurrency(item.price)}</p>
                           </div>
                           <div className="text-right">
                             <div className="text-xs text-muted-foreground">Thành tiền</div>
                             <p className="font-semibold text-sm text-primary">
-                              {itemFinalTotal.toLocaleString('vi-VN')} VNĐ
+                              {formatCompactCurrency(itemFinalTotal)}
                             </p>
                           </div>
                         </div>
@@ -755,7 +762,7 @@ export function EmployeeCartSheet({
                  includeMargin={true}
              />
                <p className="mt-2 text-xs text-center">
-                   Tổng tiền: {finalTotal.toLocaleString('vi-VN')} VNĐ
+                   Tổng tiền: {formatCompactCurrency(finalTotal)}
                </p>
            </div>
          </div>
@@ -767,29 +774,29 @@ export function EmployeeCartSheet({
             <div className="space-y-1 border-r pr-3">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-medium text-muted-foreground">Tạm tính:</span>
-                <span className="font-semibold text-sm">{subtotalAfterItemDiscounts.toLocaleString('vi-VN')}</span>
+                <span className="font-semibold text-sm">{formatCompactCurrency(subtotalAfterItemDiscounts)}</span>
               </div>
               {appliedTierDiscount.amount > 0 && (
                 <div className="flex justify-between items-center text-xs text-green-600">
                   <span className="font-medium">Ưu đãi ({selectedCustomer?.tier} - {Math.round(appliedTierDiscount.percentage * 100) / 100}%):</span>
-                  <span className="font-semibold text-sm">-{appliedTierDiscount.amount.toLocaleString('vi-VN')}</span>
+                  <span className="font-semibold text-sm">-{formatCompactCurrency(appliedTierDiscount.amount)}</span>
                 </div>
               )}
               {redeemedPoints.value > 0 && (
                 <div className="flex justify-between items-center text-xs text-green-600">
                   <span className="font-medium">Đổi điểm:</span>
-                  <span className="font-semibold text-sm">-{redeemedPoints.value.toLocaleString('vi-VN')}</span>
+                  <span className="font-semibold text-sm">-{formatCompactCurrency(redeemedPoints.value)}</span>
                 </div>
               )}
               {parseFloat(totalDiscount) > 0 && (
                 <div className="flex justify-between items-center text-xs text-green-600">
                   <span className="font-medium">Giảm giá tổng:</span>
-                  <span className="font-semibold text-sm">-{(parseFloat(totalDiscount) * 1000).toLocaleString('vi-VN')}</span>
+                  <span className="font-semibold text-sm">-{formatCompactCurrency(parseFloat(totalDiscount) * 1000)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-base border-t pt-1 mt-1">
                 <span className="font-bold text-red-600">Thành tiền:</span>
-                <span className="font-extrabold text-red-600 text-lg">{finalTotal.toLocaleString('vi-VN')} VNĐ</span>
+                <span className="font-extrabold text-red-600 text-lg">{formatCompactCurrency(finalTotal)}</span>
               </div>
             </div>
 
@@ -823,7 +830,7 @@ export function EmployeeCartSheet({
                       <div className="animate-shake">
                         <span className="text-xs font-medium">Tiền thừa</span>
                         <p className="font-bold text-green-600 h-7 flex items-center justify-center text-sm">
-                          {difference.toLocaleString('vi-VN')}
+                          {formatCompactCurrency(difference)}
                         </p>
                       </div>
                     );
@@ -834,7 +841,7 @@ export function EmployeeCartSheet({
                       <div className="animate-shake">
                         <span className="text-xs font-medium">Còn nợ</span>
                         <p className="font-bold text-orange-500 h-7 flex items-center justify-center text-sm">
-                          {(-difference).toLocaleString('vi-VN')}
+                          {formatCompactCurrency(-difference)}
                         </p>
                       </div>
                     );
@@ -848,7 +855,24 @@ export function EmployeeCartSheet({
         </div>
         <SheetFooter className="pt-2 px-3 pb-2">{/* Reduced padding */}
           <Button
-            onClick={() => onPayment(selectedCustomer, paymentMethod, amountPaid, appliedTierDiscount.amount > 0 ? appliedTierDiscount.amount : redeemedPoints.value)}
+            onClick={() => {
+              const redeemedPointsData = redeemedPoints && 
+                                            typeof redeemedPoints.points === 'number' && 
+                                            typeof redeemedPoints.value === 'number' && 
+                                            redeemedPoints.points > 0 && 
+                                            redeemedPoints.value > 0 ? {
+                points: redeemedPoints.points,
+                value: redeemedPoints.value
+              } : undefined;
+              
+              onPayment(
+                selectedCustomer, 
+                paymentMethod, 
+                amountPaid, 
+                appliedTierDiscount.amount > 0 ? appliedTierDiscount.amount : 0,
+                redeemedPointsData
+              );
+            }}
             className="w-full bg-green-500 text-white hover:bg-green-600 h-10"
             disabled={
               (() => {

@@ -49,3 +49,15 @@ export function getCustomerTierClass(tier: string | undefined | null): string {
       return "hover:bg-muted/50";
   }
 }
+
+export function formatCompactCurrency(amount: number, showUnit: boolean = false): string {
+  if (amount === 0) return showUnit ? "0" : "0";
+  
+  if (amount >= 1000) {
+    const thousands = amount / 1000;
+    const formatted = thousands % 1 === 0 ? thousands.toString() : thousands.toFixed(1);
+    return showUnit ? `${formatted}K` : formatted + "K";
+  }
+  
+  return showUnit ? amount.toString() : amount.toString();
+}

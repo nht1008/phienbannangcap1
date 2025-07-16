@@ -179,8 +179,10 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
                           <TableCell>{index + 1}</TableCell>
                           <TableCell
                             onClick={() => {
-                              navigator.clipboard.writeText(order.id);
-                              toast({ title: 'Đã sao chép', description: `ID đơn hàng ${order.id} đã được sao chép vào bộ nhớ tạm.` });
+                              if (typeof window !== 'undefined' && navigator.clipboard) {
+                                navigator.clipboard.writeText(order.id);
+                                toast({ title: 'Đã sao chép', description: `ID đơn hàng ${order.id} đã được sao chép vào bộ nhớ tạm.` });
+                              }
                             }}
                             className="cursor-pointer text-blue-600 hover:text-blue-800 flex items-center gap-2"
                           >
@@ -203,8 +205,8 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
                           {hasFullAccessRights && <TableCell className="font-medium text-primary text-lg">{order.customerName}</TableCell>}
                           <TableCell>{new Date(order.orderDate).toLocaleString('vi-VN')}</TableCell>
                           <TableCell className="text-right font-bold text-xl">
-                            <span className="bg-green-600 text-white px-2 py-1 rounded">
-                              {order.totalAmount.toLocaleString('vi-VN')}
+                            <span className="bg-green-600 text-white px-2 py-1 rounded text-sm">
+                              {order.totalAmount.toLocaleString('vi-VN')} VNĐ
                             </span>
                           </TableCell>
                           <TableCell>
@@ -304,7 +306,18 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
                               <div>
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">#{index + 1}</span>
-                                  <span className="text-sm font-medium">ID: {order.id.substring(0, 8)}...</span>
+                                  <span 
+                                    className="text-sm font-medium text-blue-600 cursor-pointer hover:text-blue-800 break-all"
+                                    onClick={() => {
+                                      if (typeof window !== 'undefined' && navigator.clipboard) {
+                                        navigator.clipboard.writeText(order.id);
+                                        toast({ title: 'Đã sao chép', description: `ID đơn hàng ${order.id} đã được sao chép vào bộ nhớ tạm.` });
+                                      }
+                                    }}
+                                    title="Nhấn để sao chép ID đơn hàng"
+                                  >
+                                    ID: {order.id}
+                                  </span>
                                 </div>
                                 {hasFullAccessRights && (
                                   <p className="text-sm font-medium text-primary">{order.customerName}</p>
@@ -312,8 +325,8 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
                                 <p className="text-xs text-muted-foreground">{new Date(order.orderDate).toLocaleDateString('vi-VN')}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-lg font-bold text-destructive">{order.totalAmount.toLocaleString('vi-VN')} VNĐ</p>
-                                <Badge variant={getStatusBadgeVariant(order.orderStatus)} className={cn("text-xs", getStatusColorClass(order.orderStatus))}>
+                                <span className="bg-green-500 text-white rounded px-2 py-1 text-sm font-bold">{order.totalAmount.toLocaleString('vi-VN')} VNĐ</span>
+                                <Badge variant={getStatusBadgeVariant(order.orderStatus)} className={cn("text-xs mt-1 block", getStatusColorClass(order.orderStatus))}>
                                   {order.orderStatus}
                                 </Badge>
                               </div>
@@ -381,7 +394,18 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
             <DialogHeader className="pb-2 flex-shrink-0">
               <DialogTitle className="text-lg sm:text-xl flex items-center">
                 <ReceiptText className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                <span className="truncate">Chi tiết Đơn hàng #{selectedOrderDetails.id}</span>
+                <span 
+                  className="truncate cursor-pointer text-blue-600 hover:text-blue-800"
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && navigator.clipboard) {
+                      navigator.clipboard.writeText(selectedOrderDetails.id);
+                      toast({ title: 'Đã sao chép', description: `ID đơn hàng ${selectedOrderDetails.id} đã được sao chép vào bộ nhớ tạm.` });
+                    }
+                  }}
+                  title="Nhấn để sao chép ID đơn hàng"
+                >
+                  Chi tiết Đơn hàng #{selectedOrderDetails.id}
+                </span>
               </DialogTitle>
               <DialogDescription className="text-sm bg-blue-100 text-blue-800 px-3 py-2 rounded">
                 Thời gian đặt: {new Date(selectedOrderDetails.orderDate).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}

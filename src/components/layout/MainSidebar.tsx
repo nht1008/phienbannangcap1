@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, UserCircle, Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ShopInfo } from '@/types';
 import type { User } from 'firebase/auth';
@@ -79,7 +79,7 @@ export const MainSidebar = React.memo(({
             alt={shopInfo.name || "Shop Logo"}
             width={192}
             height={192}
-            className="object-contain rounded-sm w-24 h-24 md:w-48 md:h-48"
+            className="object-contain rounded-sm w-24 h-24 md:w-48 md:h-48 group-data-[collapsible=icon]:hidden"
             data-ai-hint="brand logo"
             data-testid="shop-logo"
             priority
@@ -124,7 +124,7 @@ export const MainSidebar = React.memo(({
         <div className="relative">
           <button
             onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
-            className="w-full flex items-center gap-2 px-3 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground min-h-[48px] transition-all duration-200 active:bg-sidebar-accent/80"
+            className="sidebar-options-button w-full flex items-center justify-center px-3 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground min-h-[48px] transition-all duration-200 active:bg-sidebar-accent/80"
             data-testid="sidebar-options-button"
             style={{
               WebkitTapHighlightColor: 'transparent',
@@ -134,8 +134,7 @@ export const MainSidebar = React.memo(({
               touchAction: 'manipulation'
             }}
           >
-            <MoreHorizontal className="h-5 w-5" />
-            <span>Tùy chọn</span>
+            <div className="text-3xl font-black text-current leading-none">•••</div>
           </button>
           
           {/* Custom dropdown menu */}
@@ -156,30 +155,12 @@ export const MainSidebar = React.memo(({
                   WebkitOverflowScrolling: 'touch'
                 }}
               >
-                {currentUser && (
-                  <button
-                    onClick={() => {
-                      setIsUserInfoDialogOpen(true);
-                      setIsOptionsMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-3 text-left hover:bg-accent hover:text-accent-foreground min-h-[44px] first:rounded-t-lg"
-                    style={{
-                      WebkitTapHighlightColor: 'transparent',
-                      WebkitTouchCallout: 'none',
-                      touchAction: 'manipulation'
-                    }}
-                  >
-                    <UserCircle className="h-4 w-4" />
-                    <span>{currentUser.displayName || "Tài khoản"}</span>
-                  </button>
-                )}
-                
                 <button
                   onClick={() => {
                     setIsSettingsDialogOpen(true);
                     setIsOptionsMenuOpen(false);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-3 text-left hover:bg-accent hover:text-accent-foreground min-h-[44px]"
+                  className="w-full flex items-center gap-2 px-3 py-3 text-left hover:bg-accent hover:text-accent-foreground min-h-[44px] first:rounded-t-lg"
                   style={{
                     WebkitTapHighlightColor: 'transparent',
                     WebkitTouchCallout: 'none',

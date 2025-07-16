@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - Customer Account Dialog</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .demo-container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+        .demo-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1e293b;
+        }
+        .demo-description {
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+        .feature-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            background: #f8fafc;
+        }
+        .feature-title {
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 8px;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .feature-list li {
+            padding: 4px 0;
+            color: #64748b;
+            position: relative;
+            padding-left: 20px;
+        }
+        .feature-list li:before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 16px 0;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .warning {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .warning-title {
+            color: #dc2626;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .info-title {
+            color: #2563eb;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .tab-demo {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+        .tab-header {
+            background: #f1f5f9;
+            padding: 12px 16px;
+            font-weight: 600;
+            color: #334155;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .tab-content {
+            padding: 16px;
+            background: white;
+        }
+        .screenshot-placeholder {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            color: #64748b;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1 class="demo-title">🔧 Customer Account Dialog - Demo & Hướng dẫn</h1>
+        <p class="demo-description">
+            Chức năng thông tin tài khoản cho khách hàng đã được tích hợp vào <span class="highlight">CustomerCartSheet</span>. 
+            Khách hàng có thể quản lý thông tin cá nhân, đổi mật khẩu và tải ảnh đại diện lên.
+        </p>
+    </div>
+
+    <div class="demo-container">
+        <h2 class="demo-title">📱 Giao diện User</h2>
+        
+        <div class="info">
+            <div class="info-title">Cách truy cập</div>
+            <p>Khách hàng mở giỏ hàng → Nhấn nút <strong>"Tài khoản"</strong> ở góc phải trên → Dialog mở ra với 3 tab</p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="tab-demo">
+                <div class="tab-header">📋 Tab "Thông tin cá nhân"</div>
+                <div class="tab-content">
+                    <ul class="feature-list">
+                        <li>Avatar hiện tại (64x64px)</li>
+                        <li>Tên khách hàng & email</li>
+                        <li>Badge hạng VIP</li>
+                        <li>Số điện thoại & Zalo</li>
+                        <li>Địa chỉ</li>
+                        <li>Form cập nhật tên hiển thị</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="tab-demo">
+                <div class="tab-header">📸 Tab "Ảnh đại diện"</div>
+                <div class="tab-content">
+                    <ul class="feature-list">
+                        <li>Avatar hiện tại (120x120px)</li>
+                        <li>Drag & drop upload area</li>
+                        <li>Preview ảnh mới</li>
+                        <li>Button "Cập nhật" & "Hủy"</li>
+                        <li>Progress upload</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="tab-demo">
+                <div class="tab-header">🔒 Tab "Bảo mật"</div>
+                <div class="tab-content">
+                    <ul class="feature-list">
+                        <li>Input mật khẩu hiện tại</li>
+                        <li>Input mật khẩu mới</li>
+                        <li>Input xác nhận mật khẩu</li>
+                        <li>Toggle show/hide password</li>
+                        <li>Validation realtime</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="screenshot-placeholder">
+            📷 Screenshots sẽ được thêm khi test trên UI thực tế
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2 class="demo-title">⚙️ Technical Implementation</h2>
+
+        <h3>Component Structure</h3>
+        <div class="code-block">
+src/components/customer/CustomerAccountDialog.tsx
+├── ProfileTab (Thông tin cá nhân)
+├── AvatarTab (Upload ảnh đại diện) 
+└── SecurityTab (Đổi mật khẩu)
+
+Integration in CustomerCartSheet.tsx:
+├── Import CustomerAccountDialog
+├── Add account button in header
+└── Add dialog at bottom of component</div>
+
+        <h3>State Management</h3>
+        <div class="code-block">
+// CustomerCartSheet.tsx
+const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
+const { currentUser } = useAuth();
+
+// CustomerAccountDialog.tsx
+const [activeTab, setActiveTab] = useState('profile');
+const [selectedImage, setSelectedImage] = useState&lt;File | null&gt;(null);
+const [currentPassword, setCurrentPassword] = useState('');
+const [newPassword, setNewPassword] = useState('');
+// ... more states</div>
+
+        <h3>API Calls</h3>
+        <div class="code-block">
+// Avatar Upload
+const result = await uploadImage(selectedImage, 'customer-avatars');
+await updateProfile(auth.currentUser, { photoURL: result.url });
+
+// Display Name Update  
+await updateProfile(auth.currentUser, { displayName: displayName });
+
+// Password Change
+await updatePassword(auth.currentUser, newPassword);</div>
+    </div>
+
+    <div class="demo-container">
+        <h2 class="demo-title">🧪 Testing Checklist</h2>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-title">✅ Happy Path</div>
+                <ul class="feature-list">
+                    <li>Mở dialog từ cart button</li>
+                    <li>Navigate between tabs</li>
+                    <li>Upload avatar (JPG, PNG, GIF)</li>
+                    <li>Update display name</li>
+                    <li>Change password successfully</li>
+                    <li>Close dialog properly</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-title">❌ Error Handling</div>
+                <ul class="feature-list">
+                    <li>Upload file > 5MB</li>
+                    <li>Upload non-image file</li>
+                    <li>Wrong current password</li>
+                    <li>Weak new password</li>
+                    <li>Password mismatch</li>
+                    <li>Network errors</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-title">📱 Responsive</div>
+                <ul class="feature-list">
+                    <li>Mobile portrait</li>
+                    <li>Mobile landscape</li>
+                    <li>Tablet</li>
+                    <li>Desktop</li>
+                    <li>Large desktop</li>
+                    <li>Touch vs mouse interaction</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2 class="demo-title">🚀 Usage Example</h2>
+
+        <h3>Trong CustomerCartSheet component:</h3>
+        <div class="code-block">
+// Add to imports
+import { CustomerAccountDialog } from '@/components/customer/CustomerAccountDialog';
+import { useAuth } from '@/contexts/AuthContext';
+
+// Add to component
+const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
+const { currentUser } = useAuth();
+
+// Add button in header
+&lt;Button
+  variant="outline"
+  size="sm"
+  onClick={() => setIsAccountDialogOpen(true)}
+  className="flex items-center gap-2 h-8 text-xs"
+&gt;
+  &lt;User className="h-3 w-3" /&gt;
+  &lt;span className="hidden sm:inline"&gt;Tài khoản&lt;/span&gt;
+&lt;/Button&gt;
+
+// Add dialog component
+&lt;CustomerAccountDialog
+  isOpen={isAccountDialogOpen}
+  onOpenChange={setIsAccountDialogOpen}
+  customer={customer}
+  currentUserEmail={currentUser?.email || undefined}
+  currentUserName={currentUser?.displayName || undefined}
+  currentUserPhotoURL={currentUser?.photoURL || undefined}
+  onProfileUpdate={(name, photoURL) => {
+    toast({
+      title: "Thành công",
+      description: "Thông tin tài khoản đã được cập nhật",
+    });
+  }}
+/&gt;</div>
+    </div>
+
+    <div class="warning">
+        <div class="warning-title">⚠️ Lưu ý quan trọng</div>
+        <ul>
+            <li><strong>Firebase Auth:</strong> Cần user đã đăng nhập mới có thể đổi mật khẩu</li>
+            <li><strong>Cloudinary:</strong> Cần config environment variables để upload ảnh</li>
+            <li><strong>useAuth context:</strong> Component phải wrap trong AuthProvider</li>
+            <li><strong>Customer data:</strong> Cần có customer object để hiển thị thông tin</li>
+        </ul>
+    </div>
+
+    <div class="info">
+        <div class="info-title">🎯 Tương lai</div>
+        <p>Có thể mở rộng thêm:</p>
+        <ul class="feature-list">
+            <li>Crop ảnh trước khi upload</li>
+            <li>Real-time sync user data</li>
+            <li>2FA enable/disable</li>
+            <li>Activity log bảo mật</li>
+            <li>Thông báo thay đổi thông tin</li>
+        </ul>
+    </div>
+</body>
+</html>

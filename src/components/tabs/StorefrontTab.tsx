@@ -1,27 +1,26 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { normalizeStringForSearch } from '@/lib/utils';
+import { createPortal } from 'react-dom';
+import { normalizeStringForSearch, formatCompactCurrency } from '@/lib/utils';
 import type { Product, Invoice } from '@/types';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from '@/components/ui/carousel';
-import { Search, ArrowUpDown, ShoppingCart, Eye, Crown, XCircle, Save, CheckCircle, ImageIcon } from 'lucide-react';
+import { Search, ArrowUpDown, ShoppingCart, Eye, Crown, XCircle, CheckCircle, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { HeroBanner } from '../storefront/HeroBanner';
 import { NoProductsFoundIllustration } from '@/components/illustrations/NoProductsFoundIllustration';
 import { getProductThumbnail as getProductThumbnailUtil } from '@/lib/product-thumbnail-utils';
-import { Textarea } from '../ui/textarea';
-import SeasonalEffects from '../shared/SeasonalEffects';
 import { ThumbnailSelector } from '@/components/shared/ThumbnailSelector';
 import { useThumbnailSelector } from '@/hooks/use-thumbnail-selector';
 
 // New ProductCard component
 const ProductCard = ({
   product,
+  productGroup,
   isTopSeller,
   onViewDetails,
   isCustomerView,
@@ -29,8 +28,10 @@ const ProductCard = ({
   onRemoveFromStorefront,
   onThumbnailClick,
   getProductThumbnail,
+  isPriority = false,
 }: {
   product: Product;
+  productGroup: Product[];
   isTopSeller: boolean;
   onViewDetails: (product: Product) => void;
   isCustomerView: boolean;
@@ -38,8 +39,31 @@ const ProductCard = ({
   onRemoveFromStorefront: (productId: string) => Promise<void>;
   onThumbnailClick?: (product: Product, event: React.MouseEvent) => void;
   getProductThumbnail: (product: Product) => string;
+  isPriority?: boolean;
 }) => {
   const { toast } = useToast();
+
+  // Calculate price range for products with multiple variants
+  const getPriceDisplay = () => {
+    if (productGroup.length === 1) {
+      // Single variant, show exact price
+      return formatCompactCurrency(product.price);
+    } else {
+      // Multiple variants, show price range
+      const prices = productGroup.map(p => p.price);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      
+      if (minPrice === maxPrice) {
+        return formatCompactCurrency(minPrice);
+      } else {
+        return `${formatCompactCurrency(minPrice)} - ${formatCompactCurrency(maxPrice)}`;
+      }
+    }
+  };
+
+  // Check if any variant is in stock
+  const hasStock = productGroup.some(p => p.quantity > 0);
 
   return (
     <Card
@@ -66,10 +90,36 @@ const ProductCard = ({
               <XCircle className="h-4 w-4" />
             </Button>
           )}
+          
+          {/* Stock status badge in top-right corner of image */}
+          <div className="absolute top-2 right-2 z-20">
+            {hasFullAccessRights && (
+              <div className="mb-8"> {/* Add margin to avoid overlap with remove button */}
+                <div className={`text-xs font-bold px-2 py-1 rounded-full shadow-md ${
+                  hasStock 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-red-500 text-white'
+                }`}>
+                  {hasStock ? '● Còn hàng' : '○ Hết hàng'}
+                </div>
+              </div>
+            )}
+            {!hasFullAccessRights && (
+              <div className={`text-xs font-bold px-2 py-1 rounded-full shadow-md ${
+                hasStock 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-red-500 text-white'
+              }`}>
+                {hasStock ? '● Còn hàng' : '○ Hết hàng'}
+              </div>
+            )}
+          </div>
+          
           <Image
             src={getProductThumbnail(product)}
             alt={product.name}
             fill
+            priority={isPriority}
             sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
             onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/400x400.png'; }}
@@ -105,10 +155,7 @@ const ProductCard = ({
                   {product.name}
               </CardTitle>
               <p className="text-base font-semibold text-amber-300">
-                {product.price.toLocaleString('vi-VN')} VNĐ
-              </p>
-              <p className={`text-xs font-medium ${product.quantity > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {product.quantity > 0 ? '● Còn hàng' : '○ Hết hàng'}
+                {getPriceDisplay()}
               </p>
             </div>
           </div>
@@ -126,8 +173,6 @@ const ProductDetailDialog = ({
     onAddToCart,
     inventory,
     isCustomerView,
-    hasFullAccessRights,
-    onSaveDescription,
     colorOptions,
     productQualityOptions,
     sizeOptions,
@@ -139,8 +184,6 @@ const ProductDetailDialog = ({
     onAddToCart: (product: Product) => void,
     inventory: Product[],
     isCustomerView: boolean,
-    hasFullAccessRights: boolean,
-    onSaveDescription: (productId: string, description: string) => Promise<void>;
     colorOptions: string[];
     productQualityOptions: string[];
     sizeOptions: string[];
@@ -152,8 +195,6 @@ const ProductDetailDialog = ({
     const [selectedQuality, setSelectedQuality] = useState<string | undefined>();
     const [selectedUnit, setSelectedUnit] = useState<string | undefined>();
     const [selectedVariant, setSelectedVariant] = useState<Product | null>(null);
-    const [description, setDescription] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
     const [isAdded, setIsAdded] = useState(false);
     const [api, setApi] = useState<CarouselApi>();
 
@@ -169,9 +210,15 @@ const ProductDetailDialog = ({
             setSelectedSize(product.size);
             setSelectedQuality(product.quality);
             setSelectedUnit(product.unit);
-            setDescription(product.description || '');
         }
     }, [product]);
+
+    // Reset isAdded state when dialog opens/closes
+    React.useEffect(() => {
+        if (!isOpen) {
+            setIsAdded(false);
+        }
+    }, [isOpen]);
 
     // Lấy các thuộc tính có sẵn dựa trên cấu hình
     const availableColors = useMemo(() => {
@@ -410,38 +457,47 @@ const ProductDetailDialog = ({
     const handleUnitChange = (newUnit: string) => {
         setSelectedUnit(newUnit);
     };
+
+    if (!isOpen || !product) return null;
+
+    // Use product as fallback if selectedVariant is not set yet
+    const displayProduct = selectedVariant || product;
+
+    // Use portal to render at document.body level to avoid any parent container issues
+    if (typeof document === 'undefined') return null;
     
-    const handleSave = async () => {
-        if (!selectedVariant) return;
-        setIsSaving(true);
-        try {
-            await onSaveDescription(selectedVariant.id, description);
-            toast({ title: "Thành công", description: "Đã cập nhật mô tả sản phẩm." });
-            onClose();
-        } catch (error) {
-            toast({ title: "Lỗi", description: "Không thể cập nhật mô tả.", variant: "destructive" });
-        } finally {
-            setIsSaving(false);
-        }
-    };
+    return createPortal(
+        <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center p-0 md:p-2 lg:p-4 overflow-y-auto pt-0 md:pt-8 lg:pt-4" 
+            onClick={onClose} 
+            style={{ 
+                zIndex: 99999,
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+            }}
+        >
+            <div 
+                className="bg-card rounded-none md:rounded-lg shadow-2xl w-full max-w-4xl lg:max-w-6xl min-h-[100vh] md:min-h-0 md:max-h-[85vh] lg:max-h-[90vh] xl:max-h-[94vh] flex flex-col overflow-hidden relative" 
+                onClick={(e) => e.stopPropagation()}
+            >
 
-    if (!isOpen || !product || !selectedVariant) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose}>
-            <div className="bg-card rounded-lg shadow-2xl w-full max-w-4xl lg:max-w-6xl max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                <div className="flex-1 overflow-y-auto p-4 md:p-6">
-                    <div className="flex flex-col md:flex-row gap-6 lg:gap-8">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 pt-8 md:pt-6">
+                    <div className="flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-8">
                         <div className="w-full md:w-3/5 flex flex-col gap-4">
                             <Carousel setApi={setApi} className="w-full relative">
                                 <CarouselContent>
-                                    {(selectedVariant.images && selectedVariant.images.length > 0 ? selectedVariant.images : [`https://placehold.co/600x600.png`]).map((img, index) => (
+                                    {(displayProduct.images && displayProduct.images.length > 0 ? displayProduct.images : [`https://placehold.co/600x600.png`]).map((img, index) => (
                                         <CarouselItem key={index}>
-                                            <div className="relative flex-grow min-h-[300px] md:min-h-[400px] lg:min-h-[500px]">
+                                            <div className="relative flex-grow min-h-[250px] md:min-h-[400px] lg:min-h-[500px]">
                                                 <Image
                                                     src={img}
-                                                    alt={`${selectedVariant.name} - image ${index + 1}`}
+                                                    alt={`${displayProduct.name} - image ${index + 1}`}
                                                     fill
+                                                    priority={index === 0}
                                                     sizes="(max-width: 768px) 100vw, 60vw"
                                                     className="rounded-lg object-contain"
                                                     onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x600.png'; }}
@@ -455,16 +511,22 @@ const ProductDetailDialog = ({
                             </Carousel>
                         </div>
                         <div className="w-full md:w-2/5 flex flex-col">
-                            <h2 className="text-2xl lg:text-3xl font-bold mb-2">{selectedVariant.name}</h2>
-                            <p className="text-2xl lg:text-3xl font-bold text-white bg-green-500 p-2 rounded mb-4 inline-block w-fit">{selectedVariant.price.toLocaleString('vi-VN')} VNĐ</p>
+                            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold mb-2">{displayProduct.name}</h2>
                             
-                            <div className="space-y-4 mb-4">
+                            {/* Price section */}
+                            <div className="mb-4">
+                                <p className="text-lg md:text-2xl lg:text-3xl font-bold text-white bg-green-500 p-2 rounded inline-block w-fit">
+                                    {formatCompactCurrency(displayProduct.price)}
+                                </p>
+                            </div>
+                            
+                            <div className="space-y-3 md:space-y-4 mb-4">
                                 {availableColors.length > 0 && (
                                     <div>
                                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Màu sắc</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {availableColors.map(color => (
-                                                <Button key={color} variant={selectedColor === color ? 'default' : 'outline'} onClick={() => handleColorChange(color)} className="h-12 px-6 text-base">{color}</Button>
+                                                <Button key={color} variant={selectedColor === color ? 'default' : 'outline'} onClick={() => handleColorChange(color)} className="h-10 md:h-12 px-4 md:px-6 text-sm md:text-base">{color}</Button>
                                             ))}
                                         </div>
                                     </div>
@@ -474,7 +536,7 @@ const ProductDetailDialog = ({
                                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Kích thước</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {availableSizes.map(size => (
-                                                <Button key={size} variant={selectedSize === size ? 'default' : 'outline'} onClick={() => handleSizeChange(size)} className="h-12 px-6 text-base">{size}</Button>
+                                                <Button key={size} variant={selectedSize === size ? 'default' : 'outline'} onClick={() => handleSizeChange(size)} className="h-10 md:h-12 px-4 md:px-6 text-sm md:text-base">{size}</Button>
                                             ))}
                                         </div>
                                     </div>
@@ -484,7 +546,7 @@ const ProductDetailDialog = ({
                                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Chất lượng</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {availableQualities.map(quality => (
-                                                <Button key={quality} variant={selectedQuality === quality ? 'default' : 'outline'} onClick={() => handleQualityChange(quality)} className="h-12 px-6 text-base">{quality}</Button>
+                                                <Button key={quality} variant={selectedQuality === quality ? 'default' : 'outline'} onClick={() => handleQualityChange(quality)} className="h-10 md:h-12 px-4 md:px-6 text-sm md:text-base">{quality}</Button>
                                             ))}
                                         </div>
                                     </div>
@@ -494,72 +556,56 @@ const ProductDetailDialog = ({
                                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Đơn vị</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {availableUnits.map(unit => (
-                                                <Button key={unit} variant={selectedUnit === unit ? 'default' : 'outline'} onClick={() => handleUnitChange(unit)} className="h-12 px-6 text-base">{unit}</Button>
+                                                <Button key={unit} variant={selectedUnit === unit ? 'default' : 'outline'} onClick={() => handleUnitChange(unit)} className="h-10 md:h-12 px-4 md:px-6 text-sm md:text-base">{unit}</Button>
                                             ))}
                                         </div>
                                     </div>
                                 )}
                             </div>
-
-                            <div className="mb-4">
-                                <h3 className="text-sm font-medium text-muted-foreground mb-2">Mô tả</h3>
-                                {hasFullAccessRights ? (
-                                    <Textarea
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder="Nhập mô tả sản phẩm..."
-                                        className="min-h-[100px]"
-                                    />
-                                ) : (
-                                    <p className="text-muted-foreground text-sm whitespace-pre-wrap">{description || "Sản phẩm này chưa có mô tả."}</p>
-                                )}
-                            </div>
                         </div>
                     </div>
                 </div>
-                <div className="flex-shrink-0 border-t p-4 bg-card">
-                    <div className="flex gap-4">
-                        {isCustomerView ? (
-                          <Button
-                            size="lg"
-                            className="flex-1"
+
+                {/* Footer with buttons */}
+                <div className="border-t bg-background p-4 flex flex-col sm:flex-row gap-3 justify-end">
+                    <Button
+                        variant="outline"
+                        onClick={onClose}
+                        className="w-full sm:w-auto"
+                    >
+                        Đóng
+                    </Button>
+                    {isCustomerView && (
+                        <Button
+                            size="default"
+                            className="w-full sm:w-auto bg-red-500 text-white hover:bg-red-600"
                             onClick={() => {
-                              onAddToCart(selectedVariant);
-                              setIsAdded(true);
-                              setTimeout(() => {
-                                onClose();
-                                setIsAdded(false);
-                              }, 1000);
+                                onAddToCart(displayProduct);
+                                setIsAdded(true);
+                                setTimeout(() => {
+                                    onClose();
+                                    setIsAdded(false);
+                                }, 1000);
                             }}
-                            disabled={selectedVariant.quantity <= 0 || isAdded}
-                          >
+                            disabled={displayProduct.quantity <= 0 || isAdded}
+                        >
                             {isAdded ? (
-                              <>
-                                <CheckCircle className="mr-2 h-5 w-5" />
-                                Đã thêm
-                              </>
+                                <>
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Đã thêm
+                                </>
                             ) : (
-                              <>
-                                <ShoppingCart className="mr-2 h-5 w-5" />
-                                {selectedVariant.quantity > 0 ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
-                              </>
+                                <>
+                                    <ShoppingCart className="mr-2 h-4 w-4" />
+                                    {displayProduct.quantity > 0 ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
+                                </>
                             )}
-                          </Button>
-                        ) : (
-                            <div className="flex-grow" />
-                        )}
-                        
-                        {hasFullAccessRights && !isCustomerView && (
-                            <Button size="lg" onClick={handleSave} disabled={isSaving}>
-                                <Save className="mr-2 h-5 w-5" />
-                                {isSaving ? 'Đang lưu...' : 'Lưu'}
-                            </Button>
-                        )}
-                        <Button size="lg" variant="outline" onClick={onClose}>Đóng</Button>
-                    </div>
+                        </Button>
+                    )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
@@ -577,6 +623,7 @@ interface StorefrontTabProps {
   sizeOptions: string[];
   unitOptions: string[];
   onUpdateThumbnail?: (productId: string, thumbnailImage: string) => Promise<void>;
+  onDialogStateChange?: (isOpen: boolean) => void;
 }
 
 export default function StorefrontTab({ 
@@ -591,7 +638,8 @@ export default function StorefrontTab({
   productQualityOptions,
   sizeOptions,
   unitOptions,
-  onUpdateThumbnail
+  onUpdateThumbnail,
+  onDialogStateChange
 }: StorefrontTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('sold-desc');
@@ -606,6 +654,13 @@ export default function StorefrontTab({
   // Thumbnail selector
   const { thumbnailState, openThumbnailSelector, closeThumbnailSelector } = useThumbnailSelector();
   const { toast } = useToast();
+
+  // Notify parent about dialog state changes
+  React.useEffect(() => {
+    if (onDialogStateChange) {
+      onDialogStateChange(isDetailViewOpen);
+    }
+  }, [isDetailViewOpen, onDialogStateChange]);
 
   // Thumbnail selection handlers
   const handleThumbnailClick = React.useCallback((product: Product, event: React.MouseEvent) => {
@@ -814,19 +869,13 @@ export default function StorefrontTab({
     setSelectedProduct(null);
   };
 
-
   return (
     <div className="space-y-6">
-      <div>
-        <Card className="relative overflow-hidden">
-          <SeasonalEffects />
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">Sản phẩm nổi bật</CardTitle>
-          <CardDescription>Khám phá các sản phẩm của chúng tôi.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
+      {/* Search and Filter Section */}
+      <div className={`flex flex-col md:flex-row gap-4 mb-6 ${
+        isDetailViewOpen ? 'md:hidden' : 'flex'
+      }`}>
+        <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
               
               {/* Filter tags display */}
@@ -902,8 +951,10 @@ export default function StorefrontTab({
           </div>
 
           {filteredAndSortedGroups.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-6 md:gap-8">
-              {filteredAndSortedGroups.map(productGroup => {
+            <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-6 md:gap-8 ${
+              isDetailViewOpen ? 'md:hidden' : 'grid'
+            }`}>
+              {filteredAndSortedGroups.map((productGroup, index) => {
                 const representativeProduct = productGroup[0];
                 const isGroupTopSeller = productGroup.some(variant => topSellingProductIds.includes(variant.id));
                 
@@ -911,6 +962,7 @@ export default function StorefrontTab({
                   <ProductCard
                     key={representativeProduct.name}
                     product={representativeProduct}
+                    productGroup={productGroup}
                     isTopSeller={isGroupTopSeller}
                     onViewDetails={handleViewDetails}
                     isCustomerView={isCustomerView}
@@ -918,12 +970,15 @@ export default function StorefrontTab({
                     onRemoveFromStorefront={onRemoveFromStorefront}
                     onThumbnailClick={onUpdateThumbnail ? handleThumbnailClick : undefined}
                     getProductThumbnail={getProductThumbnail}
+                    isPriority={index < 4}
                   />
                 );
               })}
             </div>
           ) : (
-            <div className="text-center py-16">
+            <div className={`text-center py-16 ${
+              isDetailViewOpen ? 'md:hidden' : 'block'
+            }`}>
               <div className="flex flex-col items-center gap-4">
                 <NoProductsFoundIllustration />
                 <h3 className="text-xl font-semibold">Không tìm thấy sản phẩm</h3>
@@ -936,24 +991,6 @@ export default function StorefrontTab({
               </div>
             </div>
           )}
-        </CardContent>
-        </Card>
-      </div>
-      
-      <ProductDetailDialog
-        product={selectedProduct}
-        isOpen={isDetailViewOpen}
-        onClose={handleCloseDetails}
-        onAddToCart={onAddToCart}
-        inventory={inventory}
-        isCustomerView={isCustomerView}
-        hasFullAccessRights={hasFullAccessRights}
-        onSaveDescription={onSaveDescription}
-        colorOptions={colorOptions}
-        productQualityOptions={productQualityOptions}
-        sizeOptions={sizeOptions}
-        unitOptions={unitOptions}
-      />
 
       {/* Thumbnail Selector Dialog */}
       <ThumbnailSelector
@@ -962,6 +999,20 @@ export default function StorefrontTab({
         products={thumbnailState.products}
         selectedProduct={thumbnailState.selectedProduct!}
         onThumbnailSelect={handleThumbnailSelect}
+      />
+
+      {/* Product Detail Dialog - Always rendered outside conditionally hidden content */}
+      <ProductDetailDialog
+        product={selectedProduct}
+        isOpen={isDetailViewOpen}
+        onClose={handleCloseDetails}
+        onAddToCart={onAddToCart}
+        inventory={inventory}
+        isCustomerView={isCustomerView}
+        colorOptions={colorOptions}
+        productQualityOptions={productQualityOptions}
+        sizeOptions={sizeOptions}
+        unitOptions={unitOptions}
       />
     </div>
   );

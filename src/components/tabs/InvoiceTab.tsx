@@ -365,15 +365,20 @@ export function InvoiceTab({ invoices, onProcessInvoiceCancellationOrReturn, fil
                         <TableCell>{invoice.id}</TableCell>
                         <TableCell>{invoice.customerName}</TableCell>
                         <TableCell>
-                          {invoiceDate.toLocaleDateString('vi-VN')} {invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          <div className="text-sm">
+                            <div>{invoiceDate.toLocaleDateString('vi-VN')}</div>
+                            <div className="text-muted-foreground">{invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <span className={cn(isCashPayment && displayedAmount > 0 ? 'bg-green-600 text-white px-2 py-1 rounded' : '')}>
+                          <span className="bg-green-600 text-white px-2 py-1 rounded">
                             {displayedAmount.toLocaleString('vi-VN')} VNĐ
                           </span>
                         </TableCell>
-                        <TableCell className="text-[hsl(var(--destructive))]">
-                          {totalItemDiscounts.toLocaleString('vi-VN')} VNĐ
+                        <TableCell>
+                          <span className="bg-red-600 text-white px-2 py-1 rounded">
+                            {totalItemDiscounts.toLocaleString('vi-VN')} VNĐ
+                          </span>
                         </TableCell>
                         <TableCell>
                           <span className="bg-red-600 text-white px-2 py-1 rounded">
