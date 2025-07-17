@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap');
-@import '../styles/samsung-galaxy-s8-mobile-fix.css';
-@import '../styles/mobile-fixes.css';
+/* @import '../styles/samsung-galaxy-s8-mobile-fix.css'; */
+/* @import '../styles/mobile-fixes.css'; */
 
 @tailwind base;
 @tailwind components;
