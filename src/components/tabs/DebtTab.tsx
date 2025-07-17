@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { cn } from '@/lib/utils';
+import { cn, formatCurrencyForUser } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { NoDebtIllustration } from '@/components/illustrations/NoDebtIllustration';
 import { DebtIcon } from '@/components/icons/DebtIcon';
@@ -122,7 +122,7 @@ export function DebtTab({
 
         <div className="mb-6 p-4 bg-destructive/10 border-l-4 border-destructive rounded-md text-[hsl(var(--destructive))]">
           <p className="font-bold">
-            {isCurrentUserCustomer ? 'Tổng nợ còn lại của tôi' : `Tổng nợ còn lại ${searchQuery || statusFilter !== 'all' ? 'đã lọc' : 'của tất cả khách hàng'}`}: {totalUnpaid.toLocaleString('vi-VN')} VNĐ
+            {isCurrentUserCustomer ? 'Tổng nợ còn lại của tôi' : `Tổng nợ còn lại ${searchQuery || statusFilter !== 'all' ? 'đã lọc' : 'của tất cả khách hàng'}`}: {formatCurrencyForUser(totalUnpaid, isCurrentUserCustomer)}
             {!isCurrentUserCustomer && (searchQuery || statusFilter !== 'all') && (
               <span className="text-sm font-normal ml-2">
                 ({filteredDebts.length}/{debts.length} khách hàng)
@@ -181,17 +181,17 @@ export function DebtTab({
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="bg-red-600 text-white px-2 py-1 rounded">
-                        {debt.originalAmount.toLocaleString('vi-VN')} VNĐ
+                        {formatCurrencyForUser(debt.originalAmount, isCurrentUserCustomer)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="bg-green-600 text-white px-2 py-1 rounded">
-                        {debt.amountPaid.toLocaleString('vi-VN')} VNĐ
+                        {formatCurrencyForUser(debt.amountPaid, isCurrentUserCustomer)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right font-bold">
                       <span className="bg-red-600 text-white px-2 py-1 rounded">
-                        {debt.remainingAmount.toLocaleString('vi-VN')} VNĐ
+                        {formatCurrencyForUser(debt.remainingAmount, isCurrentUserCustomer)}
                       </span>
                     </TableCell>
                     <TableCell className="text-center space-x-2">

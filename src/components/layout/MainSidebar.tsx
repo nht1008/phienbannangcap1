@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import type { ShopInfo } from '@/types';
 import type { User } from 'firebase/auth';
 
-type TabName = 'Bán hàng' | 'Gian hàng' | 'Kho hàng' | 'Đơn hàng' | 'Lịch sử đặt hàng' | 'Bảng xếp hạng' | 'Hóa đơn' | 'Công nợ' | 'Khách hàng' | 'Nhân viên' | 'Phân tích' | 'Đổi điểm';
+type TabName = 'Bán hàng' | 'Gian hàng' | 'Kho hàng' | 'Đơn hàng' | 'Lịch sử đặt hàng' | 'Bảng xếp hạng' | 'Hóa đơn' | 'Công nợ' | 'Công nợ cá nhân' | 'Khách hàng' | 'Nhân viên' | 'Phân tích' | 'Đổi điểm';
 
 interface NavItem {
   name: TabName;

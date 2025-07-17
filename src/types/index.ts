@@ -80,6 +80,7 @@ export interface Invoice {
   debtAmount?: number; 
   employeeId: string; 
   employeeName?: string; 
+  orderSource?: 'store' | 'store-debt' | 'online'; // Nguồn đơn hàng: tại cửa hàng, tại cửa hàng-nợ, hoặc online
 }
 
 export interface OrderItem extends InvoiceCartItem { // Similar to InvoiceCartItem but for orders

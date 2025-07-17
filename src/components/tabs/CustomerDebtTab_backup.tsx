@@ -15,6 +15,17 @@ interface CustomerDebtTabProps {
   currentUser: AuthUser | null
   currentUserCustomerData: Customer | null
 }
+import { Debt, Invoice, Customer, AuthUser } from '@/types'
+import { formatCompactCurrency } from '@/lib/utils'
+import { CalendarDays, CreditCard, Receipt, Wallet } from 'lucide-react'
+
+interface CustomerDebtTabProps {
+  debts: Debt[]
+  invoices: Invoice[]
+  currentUser: AuthUser | null
+  currentUserCustomerData?: Customer | null
+  onOpenPaymentDialog?: (debt: Debt) => void
+}
 
 interface DebtHistoryItem {
   id: string
@@ -30,7 +41,8 @@ export default function CustomerDebtTab({
   debts, 
   invoices, 
   currentUser,
-  currentUserCustomerData
+  currentUserCustomerData,
+  onOpenPaymentDialog 
 }: CustomerDebtTabProps) {
   console.log('🎯 CustomerDebtTab Component Rendered!', {
     timestamp: new Date().toISOString(),
@@ -49,86 +61,113 @@ export default function CustomerDebtTab({
 
   // Filter debts for current customer
   const customerDebts = useMemo(() => {
-    if (!currentUser) {
-      console.log('🔍 CustomerDebtTab Debug - ALWAYS RUNS:', {
-        hasCurrentUser: false,
-        reason: 'No currentUser provided'
-      })
-      return []
-    }
-
     console.log('🔍 CustomerDebtTab Debug - ALWAYS RUNS:', {
       hasCurrentUser: !!currentUser,
-      currentUserUid: currentUser.uid,
-      currentUserEmail: currentUser.email,
-      currentUserDisplayName: currentUser.displayName,
-      currentUserCustomerId: currentUser.uid,
-      totalDebtsInSystem: debts?.length || 0,
-      totalInvoicesInSystem: invoices?.length || 0,
-      timestamp: new Date().toISOString()
+      currentUserUid: currentUser?.uid,
+      currentUserEmail: currentUser?.email,
+      currentUserDisplayName: currentUser?.displayName,
+      currentUserCustomerId: currentUserCustomerData?.id,
+      currentUserCustomerName: currentUserCustomerData?.name,
+      totalDebts: debts.length,
+      debtsArray: debts.length > 0 ? debts.map(d => ({
+        id: d.id,
+        customerId: d.customerId,
+        customerName: d.customerName,
+        amount: d.remainingAmount
+      })) : 'NO DEBTS FOUND',
+      allCustomerIds: debts.length > 0 ? [...new Set(debts.map(d => d.customerId))] : 'NO CUSTOMER IDS'
     })
-
+    
+    if (!currentUser?.uid) {
+      console.log('❌ No currentUser.uid - cannot filter debts')
+      return []
+    }
+    
+    // 🔍 IMMEDIATE: Check for invoices with debt amounts for this customer BEFORE filtering debts
     console.log('🚀 ABOUT TO FILTER - Checking invoices first...')
-
-    // Enhanced invoice analysis
-    const customerInvoices = invoices.filter(invoice => invoice.customerId === currentUser.uid)
-    const invoicesWithDebt = customerInvoices.filter(invoice => {
-      const debtAmount = invoice.total - (invoice.amountPaid || 0)
-      return debtAmount > 0
-    })
+    const customerInvoicesWithDebtPreFilter = invoices.filter(invoice => 
+      invoice.customerId === currentUser.uid && 
+      invoice.debtAmount && 
+      invoice.debtAmount > 0
+    );
     
     console.log('💰 Invoice Debt Analysis - BEFORE DEBT FILTER:', {
       customerUid: currentUser.uid,
       totalInvoices: invoices.length,
-      customerInvoices: customerInvoices.length,
-      invoicesWithDebt: invoicesWithDebt.length,
-      invoiceDebtDetails: invoicesWithDebt.map(invoice => ({
-        invoiceId: invoice.id,
-        total: invoice.total,
-        amountPaid: invoice.amountPaid || 0,
-        debtAmount: invoice.total - (invoice.amountPaid || 0),
-        paymentDifference: invoice.total - (invoice.amountPaid || 0)
+      customerInvoices: invoices.filter(inv => inv.customerId === currentUser.uid).length,
+      invoicesWithDebt: customerInvoicesWithDebtPreFilter.length,
+      invoiceDebtDetails: customerInvoicesWithDebtPreFilter.map(inv => ({
+        id: inv.id,
+        date: inv.date,
+        total: inv.total,
+        amountPaid: inv.amountPaid,
+        debtAmount: inv.debtAmount,
+        customerId: inv.customerId,
+        orderSource: inv.orderSource
       }))
     })
 
-    // Check for mismatch between invoices with debt and actual debt records
-    if (invoicesWithDebt.length > 0 && debts.length === 0) {
+    // 🚨 CRITICAL DEBUG: Show detailed invoice data
+    if (customerInvoicesWithDebtPreFilter.length > 0) {
       console.log('🚨 CRITICAL: Found invoices with debt but no debt records!')
       console.log('🔍 Detailed Invoice Analysis:')
-      invoicesWithDebt.forEach((invoice, index) => {
-        const debtAmount = invoice.total - (invoice.amountPaid || 0)
+      customerInvoicesWithDebtPreFilter.forEach((invoice, index) => {
         console.log(`📋 Invoice ${index + 1}:`, {
           fullInvoiceObject: invoice,
-          shouldHaveCreatedDebt: debtAmount > 0,
-          debtAmount: debtAmount,
+          shouldHaveCreatedDebt: (invoice.debtAmount || 0) > 0,
+          debtAmount: invoice.debtAmount,
           paymentDifference: invoice.total - (invoice.amountPaid || 0)
         })
       })
     }
 
-    const filteredDebts = debts.filter(debt => debt.customerId === currentUser.uid)
+    // Filter by currentUser.uid (which should match customer.id)
+    const filtered = debts.filter(debt => debt.customerId === currentUser.uid)
     
     console.log('📊 Filter Results:', {
       searchingForCustomerId: currentUser.uid,
       totalDebtsInSystem: debts.length,
-      filteredDebtsCount: filteredDebts.length,
-      matchedDebts: filteredDebts
+      filteredDebtsCount: filtered.length,
+      matchedDebts: filtered.map(d => ({
+        id: d.id,
+        customerId: d.customerId,
+        customerName: d.customerName,
+        remainingAmount: d.remainingAmount
+      }))
     })
+    
+    if (filtered.length === 0 && debts.length > 0) {
+      console.log('❌ MISMATCH DETECTED!')
+      console.log('Current User UID:', currentUser.uid)
+      console.log('Available Customer IDs in debts:', [...new Set(debts.map(d => d.customerId))])
+      console.log('Debt Customer Names:', [...new Set(debts.map(d => d.customerName))])
+    }
+    
+    return filtered
+  }, [debts, currentUser?.uid, currentUserCustomerData])
 
-    return filteredDebts
-  }, [debts, currentUser, invoices])
+  // Filter invoices for current customer that created debt
+  const customerDebtInvoices = useMemo(() => {
+    if (!currentUser?.uid) return []
+    return invoices.filter(invoice => 
+      invoice.customerId === currentUser.uid && 
+      invoice.orderSource === 'store-debt'
+    )
+  }, [invoices, currentUser?.uid])
 
+  // Calculate total debt
   const totalDebt = useMemo(() => {
     return customerDebts.reduce((sum, debt) => sum + debt.remainingAmount, 0)
   }, [customerDebts])
 
+  // Create debt history for a specific debt
   const createDebtHistory = (debt: Debt): DebtHistoryItem[] => {
     const history: DebtHistoryItem[] = []
     
-    // Find related invoice
-    const relatedInvoice = invoices.find(invoice => 
-      invoice.customerId === debt.customerId && 
-      Math.abs(new Date(invoice.date).getTime() - new Date(debt.date).getTime()) < 24 * 60 * 60 * 1000
+    // Find the invoice that created this debt
+    const relatedInvoice = customerDebtInvoices.find(invoice => 
+      Math.abs(invoice.total - debt.originalAmount) < 0.01 &&
+      new Date(invoice.date).getTime() <= new Date(debt.date).getTime() + 86400000 // within 24 hours
     )
 
     // Add debt creation
@@ -197,7 +236,7 @@ export default function CustomerDebtTab({
   return (
     <div className="space-y-6">
       {/* Summary Card */}
-      <Card>
+      <Card className="border-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5" />
@@ -213,7 +252,7 @@ export default function CustomerDebtTab({
               <div className="text-2xl font-bold text-blue-600">
                 {customerDebts.length}
               </div>
-              <div className="text-sm text-blue-600">Tổng khoản nợ</div>
+              <div className="text-sm text-blue-600">Khoản nợ</div>
             </div>
             <div className="text-center p-4 bg-red-50 rounded-lg">
               <div className="text-2xl font-bold text-red-600">
@@ -239,7 +278,7 @@ export default function CustomerDebtTab({
             Danh sách công nợ
           </CardTitle>
           <CardDescription>
-            Chi tiết từng khoản nợ và thanh toán qua QR Code
+            Chi tiết từng khoản nợ và lịch sử thanh toán
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -326,12 +365,17 @@ export default function CustomerDebtTab({
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Badge variant={item.type === 'debt' ? 'destructive' : 'secondary'}>
+                        {item.type === 'debt' ? (
+                          <CreditCard className="h-4 w-4 text-red-600" />
+                        ) : (
+                          <Wallet className="h-4 w-4 text-green-600" />
+                        )}
+                        <span className={`font-semibold ${item.type === 'debt' ? 'text-red-700' : 'text-green-700'}`}>
                           {item.type === 'debt' ? 'Tạo nợ' : 'Thanh toán'}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDate(item.date)}
                         </span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {formatDate(item.date)}
                       </div>
                       <div className="text-sm">
                         {item.description}

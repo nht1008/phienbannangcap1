@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
-import type { Product, Invoice, Debt, DebtStatus, CartItem, ProductOptionType, Customer, Employee, ShopInfo, EmployeePosition, DisposalLogEntry, UserAccessRequest, UserAccessRequestStatus, ProductFormData, Order, OrderStatus, OrderItem, ProductSalesSummary, IdentifiedSlowMovingProduct, ProductSalesDetail } from '@/types';
+import type { Product, Invoice, Debt, DebtStatus, CartItem, ProductOptionType, Customer, Employee, ShopInfo, EmployeePosition, DisposalLogEntry, UserAccessRequest, UserAccessRequestStatus, ProductFormData, Order, OrderStatus, OrderItem, ProductSalesSummary, IdentifiedSlowMovingProduct, ProductSalesDetail, AuthUser } from '@/types';
 import { initialProductFormData as defaultProductFormData } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useAuth, type AuthContextType } from '@/contexts/AuthContext';
@@ -40,6 +40,7 @@ const OrdersTab = dynamic(() => import('@/components/tabs/OrdersTab').then(mod =
 const StorefrontTab = dynamic(() => import('@/components/tabs/StorefrontTab'), { ssr: false, loading: TabLoading });
 const AnalysisTab = dynamic(() => import('@/components/tabs/AnalysisTab'), { ssr: false, loading: TabLoading });
 const OrderHistoryTab = dynamic(() => import('@/components/tabs/OrderHistoryTab').then(mod => mod.OrderHistoryTab), { ssr: false, loading: TabLoading });
+const CustomerDebtTab = dynamic(() => import('@/components/tabs/CustomerDebtTab'), { ssr: false, loading: TabLoading });
 const LeaderboardTab = dynamic(() => import('@/components/tabs/LeaderboardTab').then(mod => mod.LeaderboardTab), { ssr: false, loading: TabLoading });
 const PointsTab = dynamic(() => import('@/components/tabs/PointsTab').then(mod => mod.PointsTab), { ssr: false, loading: TabLoading });
 // import { HistoryTab } from '../../../../src/components/tabs/HistoryTab';
@@ -102,7 +103,7 @@ import {
   SidebarInset,
   useSidebar
 } from '@/components/ui/sidebar';
-import { AlignJustify, Menu, LogOut, UserCircle, Settings, ShoppingCart, Store, Pencil, Trash2, PlusCircle, MoreHorizontal } from 'lucide-react';
+import { AlignJustify, Menu, LogOut, UserCircle, Settings, ShoppingCart, Store, Pencil, Trash2, PlusCircle, MoreHorizontal, Wallet } from 'lucide-react';
 import { TopSpenderMarquee } from '@/components/shared/TopSpenderMarquee';
 import { db, auth } from '@/lib/firebase';
 import { ref, onValue, set, push, update, get, child, remove, query, orderByChild, equalTo } from "firebase/database";
@@ -127,7 +128,7 @@ interface InvoiceCartItem {
 }
 
 
-type TabName = 'Bán hàng' | 'Gian hàng' | 'Kho hàng' | 'Đơn hàng' | 'Lịch sử đặt hàng' | 'Bảng xếp hạng' | 'Hóa đơn' | 'Công nợ' | 'Khách hàng' | 'Nhân viên' | 'Phân tích' | 'Đổi điểm';
+type TabName = 'Bán hàng' | 'Gian hàng' | 'Kho hàng' | 'Đơn hàng' | 'Lịch sử đặt hàng' | 'Bảng xếp hạng' | 'Hóa đơn' | 'Công nợ' | 'Công nợ cá nhân' | 'Khách hàng' | 'Nhân viên' | 'Phân tích' | 'Đổi điểm';
 
 export interface ActivityDateTimeFilter {
   startDate: Date | null;
@@ -270,6 +271,7 @@ interface FleurManagerLayoutContentProps {
   isCurrentUserAdmin: boolean;
   currentUserEmployeeData: Employee | null;
   isCurrentUserCustomer: boolean;
+  currentUserCustomerData: Customer | null;
   hasFullAccessRights: boolean;
   filteredInvoicesForInvoiceTab: Invoice[];
   filteredDebtsForDebtTab: Debt[];
@@ -352,7 +354,7 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
     shopInfo, isLoadingShopInfo, authLoading, isLoadingAccessRequest, cart, customerCart, productNameOptions, colorOptions, productQualityOptions, sizeOptions,
     unitOptions, storefrontProducts, storefrontProductIds, invoiceFilter, orderFilter, analysisFilter, isUserInfoDialogOpen, setIsUserInfoDialogOpen,
     isSettingsDialogOpen, setIsSettingsDialogOpen, overallFontSize,
-    setOverallFontSize, numericDisplaySize, setNumericDisplaySize, isCurrentUserAdmin, currentUserEmployeeData, isCurrentUserCustomer, hasFullAccessRights,
+    setOverallFontSize, numericDisplaySize, setNumericDisplaySize, isCurrentUserAdmin, currentUserEmployeeData, isCurrentUserCustomer, currentUserCustomerData, hasFullAccessRights,
     filteredInvoicesForInvoiceTab, filteredDebtsForDebtTab, filteredOrdersForOrderTab, filteredInvoicesForAnalysis, filteredDisposalLogForAnalysis,
     handleCreateInvoice, handleAddProductOption,
     handleDeleteProductOption, handleImportProducts, handleProcessInvoiceCancellationOrReturn,
@@ -389,19 +391,31 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
     { name: 'Đổi điểm' as TabName, icon: <PointsIcon /> },
     { name: 'Hóa đơn' as TabName, icon: <InvoiceIconSvg /> },
     { name: 'Công nợ' as TabName, icon: <DebtIcon /> },
+    { name: 'Công nợ cá nhân' as TabName, icon: <Wallet /> },
     { name: 'Phân tích' as TabName, icon: <BarChartBig /> },
     { name: 'Khách hàng' as TabName, icon: <CustomerIcon /> },
     { name: 'Nhân viên' as TabName, icon: <EmployeeIcon /> },
   ], []);
 
   const navItems = useMemo(() => {
+    console.log('🧭 Navigation Debug:', {
+      isCurrentUserCustomer,
+      currentUserUid: currentUser?.uid,
+      currentUserEmail: currentUser?.email,
+      currentUserCustomerData: currentUserCustomerData ? {
+        id: currentUserCustomerData.id,
+        name: currentUserCustomerData.name
+      } : null
+    })
+    
     if (isCurrentUserCustomer) {
+      console.log('✅ User is customer - showing customer tabs')
       return baseNavItems.filter(item =>
         item.name === 'Gian hàng' ||
         item.name === 'Đơn hàng' ||
         item.name === 'Lịch sử đặt hàng' ||
         item.name === 'Bảng xếp hạng' ||
-        item.name === 'Công nợ'
+        item.name === 'Công nợ cá nhân'
       );
     }
 
@@ -482,6 +496,7 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
                   currentUser={currentUser}
                   hasFullAccessRights={hasFullAccessRights}
                   onConfirmCancel={onConfirmCancel}
+                  isCurrentUserCustomer={isCurrentUserCustomer}
                 />,
     'Lịch sử đặt hàng': <OrderHistoryTab
                           invoices={invoicesData}
@@ -534,10 +549,16 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
                     isLoading={isLoadingAccessRequest || authLoading}
                   />
                 </div>,
-    'Bảng xếp hạng': <LeaderboardTab customers={enhancedCustomersData} invoices={invoicesData} debts={debtsData} />,
+    'Bảng xếp hạng': <LeaderboardTab customers={enhancedCustomersData} invoices={invoicesData} debts={debtsData} isCurrentUserCustomer={isCurrentUserCustomer} />,
     'Đổi điểm': <PointsTab customers={enhancedCustomersData} />,
+    'Công nợ cá nhân': <CustomerDebtTab 
+                          debts={debtsData} 
+                          invoices={invoicesData} 
+                          currentUser={currentUser as AuthUser}
+                          currentUserCustomerData={currentUserCustomerData}
+                        />,
   }), [
-      inventory, customersData, enhancedCustomersData, ordersData, invoicesData, debtsData, employeesData, disposalLogEntries, productSalesSummaryData, identifiedSlowMovingProductsData, customerInsightsData, salesByHourData, cart, currentUser, numericDisplaySize,
+      inventory, customersData, enhancedCustomersData, ordersData, invoicesData, debtsData, employeesData, disposalLogEntries, productSalesSummaryData, identifiedSlowMovingProductsData, customerInsightsData, salesByHourData, cart, currentUser, currentUserCustomerData, numericDisplaySize,
       productNameOptions, colorOptions, productQualityOptions, sizeOptions, unitOptions,
       storefrontProducts, storefrontProductIds,
       filteredInvoicesForInvoiceTab, invoiceFilter,
@@ -722,6 +743,8 @@ export default function FleurManagerPage() {
   const { toast } = useToast();
   const salesTabRef = useRef<SalesTabHandles>(null);
 
+  const [isCurrentUserCustomer, setIsCurrentUserCustomer] = useState(false);
+  const [currentUserCustomerData, setCurrentUserCustomerData] = useState<Customer | null>(null);
   const [isSettingName, setIsSettingName] = useState(false);
   const [userAccessRequest, setUserAccessRequest] = useState<UserAccessRequest | null>(null);
   const [activeTab, setActiveTab] = useState<TabName>('Bán hàng');
@@ -772,8 +795,6 @@ export default function FleurManagerPage() {
   const [productToDeleteId, setProductToDeleteId] = useState<string | null>(null);
   const [isConfirmingProductDelete, setIsConfirmingProductDelete] = useState(false);
 
-  const [isCurrentUserCustomer, setIsCurrentUserCustomer] = useState(false);
-  const [currentUserCustomerData, setCurrentUserCustomerData] = useState<Customer | null>(null);
   const [isLoadingAccessRequest, setIsLoadingAccessRequest] = useState(true);
 
   const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
@@ -1148,6 +1169,41 @@ export default function FleurManagerPage() {
         setInvoicesData(invoicesArray);
       }, (error) => console.error("Error fetching all invoices for leaderboard:", error)));
 
+      // 🔥 CRITICAL: Load customer's own debts
+      console.log('🔥 CUSTOMER - About to load debts for:', currentUser.uid);
+      const customerDebtsQuery = query(
+        ref(db, 'debts'),
+        orderByChild('customerId'),
+        equalTo(currentUser.uid)
+      );
+      subscriptions.push(onValue(customerDebtsQuery, (snapshot) => {
+        console.log('🔥 CUSTOMER DEBTS FIREBASE RESPONSE:', {
+          exists: snapshot.exists(),
+          val: snapshot.val(),
+          key: snapshot.key,
+          size: snapshot.size,
+          customerUid: currentUser.uid,
+          timestamp: new Date().toISOString()
+        });
+        
+        const data = snapshot.val();
+        const loadedDebts: any[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+        
+        console.log('🚨 CUSTOMER DEBTS LOADED RESULT:', {
+          totalDebts: loadedDebts?.length || 0,
+          debtsData: loadedDebts,
+          customerUid: currentUser.uid,
+          timestamp: new Date().toISOString()
+        });
+        
+        setDebtsData(loadedDebts);
+      }, (error) => {
+        console.error('🚨 CUSTOMER DEBTS LOADING ERROR:', error);
+        console.error('🚨 Firebase Rules may be blocking customer debt access!');
+        toast({ title: "Lỗi tải dữ liệu công nợ", description: "Không thể tải danh sách công nợ của bạn.", variant: "destructive", duration: 2000 });
+        setDebtsData([]); // Set empty array on error
+      }));
+
     } else {
       // --- Employee & Admin Data ---
       const loadFullDataFor = (path: string, setter: (data: any[]) => void) => {
@@ -1175,7 +1231,40 @@ export default function FleurManagerPage() {
       loadFullDataFor('customers', setCustomersData);
       loadFullDataFor('orders', setOrdersData);
       loadFullDataFor('invoices', setInvoicesData);
-      loadFullDataFor('debts', setDebtsData);
+      // 🔍 DEBUG: Add special debugging for debts loading
+      console.log('🔥 ABOUT TO LOAD DEBTS - Current user:', {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        isEmployee: !!currentUser.uid,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Special debts loading with detailed error handling
+      const debtsRef = ref(db, 'debts');
+      subscriptions.push(onValue(debtsRef, (snapshot) => {
+        console.log('🔥 DEBTS FIREBASE RESPONSE:', {
+          exists: snapshot.exists(),
+          val: snapshot.val(),
+          key: snapshot.key,
+          size: snapshot.size,
+          timestamp: new Date().toISOString()
+        });
+        
+        const data = snapshot.val();
+        const loadedDebts: any[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+        
+        console.log('🚨 DEBTS LOADED RESULT:', {
+          totalDebts: loadedDebts?.length || 0,
+          debtsData: loadedDebts,
+          timestamp: new Date().toISOString()
+        });
+        
+        setDebtsData(loadedDebts);
+      }, (error) => {
+        console.error('🚨 DEBTS LOADING ERROR:', error);
+        toast({ title: "Lỗi tải dữ liệu công nợ", description: "Không thể tải danh sách công nợ.", variant: "destructive", duration: 2000 });
+      }));
+      
       loadFullDataFor('disposalLog', setDisposalLogEntries);
     }
 
@@ -1711,6 +1800,7 @@ export default function FleurManagerPage() {
         amountPaid,
         employeeId,
         employeeName: employeeName || 'Không rõ',
+        orderSource: calculatedDebtAmount >= finalTotal ? 'store-debt' : 'store', // Phân biệt nợ hoàn toàn vs trả tiền
         ...(calculatedDebtAmount > 0 && { debtAmount: calculatedDebtAmount }),
       };
       await set(newInvoiceRef, newInvoiceData);
@@ -1775,32 +1865,57 @@ export default function FleurManagerPage() {
       }
 
       if (calculatedDebtAmount > 0) {
-        const newDebtRef = push(ref(db, 'debts'));
-        const newDebt: Omit<Debt, 'id'> = {
-          customerId: customerId,
-          customerName: normalizedCustomerName,
-          originalAmount: calculatedDebtAmount,
-          amountPaid: 0,
-          remainingAmount: calculatedDebtAmount,
-          date: new Date().toISOString(),
-          status: 'Còn nợ',
-          invoiceId: invoiceId,
-          payments: [],
-          createdEmployeeId: employeeId,
-          createdEmployeeName: employeeName || 'Không rõ',
-        };
-        await set(newDebtRef, newDebt);
-        
-        // Log debt creation history
-        await logDebtCreation(
+        console.log('🔥 DEBT CREATION STARTED:', {
+          calculatedDebtAmount,
           customerId,
           normalizedCustomerName,
-          calculatedDebtAmount,
           employeeId,
-          employeeName || 'Không rõ',
+          employeeName,
           invoiceId,
-          paymentMethod
-        );
+          timestamp: new Date().toISOString()
+        });
+
+        try {
+          const newDebtRef = push(ref(db, 'debts'));
+          console.log('🔥 Debt ref created:', newDebtRef.key);
+          
+          const newDebt: Omit<Debt, 'id'> = {
+            customerId: customerId,
+            customerName: normalizedCustomerName,
+            originalAmount: calculatedDebtAmount,
+            amountPaid: 0,
+            remainingAmount: calculatedDebtAmount,
+            date: new Date().toISOString(),
+            status: 'Còn nợ',
+            invoiceId: invoiceId,
+            payments: [],
+            createdEmployeeId: employeeId,
+            createdEmployeeName: employeeName || 'Không rõ',
+          };
+          
+          console.log('🔥 About to save debt:', newDebt);
+          await set(newDebtRef, newDebt);
+          console.log('✅ DEBT SAVED SUCCESSFULLY to Firebase!');
+          
+          // Log debt creation history
+          console.log('🔥 Logging debt creation history...');
+          await logDebtCreation(
+            customerId,
+            normalizedCustomerName,
+            calculatedDebtAmount,
+            employeeId,
+            employeeName || 'Không rõ',
+            invoiceId,
+            paymentMethod
+          );
+          console.log('✅ DEBT HISTORY LOGGED SUCCESSFULLY!');
+          
+        } catch (debtError) {
+          console.error('🚨 DEBT CREATION ERROR:', debtError);
+          throw debtError; // Re-throw to prevent invoice creation if debt creation fails
+        }
+      } else {
+        console.log('⚠️ No debt to create - calculatedDebtAmount is 0 or negative');
       }
       const updates: { [key: string]: any } = {};
       for (const cartItem of invoiceCartItems) {
@@ -2524,6 +2639,7 @@ export default function FleurManagerPage() {
                     debtAmount: 0,
                     employeeId: currentEmployeeId,
                     employeeName: currentEmployeeName,
+                    orderSource: 'online', // Đặt hàng online (từ CustomerCartSheet)
                 };
     
                 // Add invoice creation to updates
@@ -3194,7 +3310,7 @@ export default function FleurManagerPage() {
           isSettingsDialogOpen={isSettingsDialogOpen} setIsSettingsDialogOpen={setIsSettingsDialogOpen}
           overallFontSize={overallFontSize} setOverallFontSize={setOverallFontSize} numericDisplaySize={numericDisplaySize}
           setNumericDisplaySize={setNumericDisplaySize} isCurrentUserAdmin={isCurrentUserAdmin}
-          currentUserEmployeeData={currentUserEmployeeData} isCurrentUserCustomer={isCurrentUserCustomer} hasFullAccessRights={hasFullAccessRights}
+          currentUserEmployeeData={currentUserEmployeeData} isCurrentUserCustomer={isCurrentUserCustomer} currentUserCustomerData={currentUserCustomerData} hasFullAccessRights={hasFullAccessRights}
           filteredInvoicesForInvoiceTab={filteredInvoicesForInvoiceTab}
           filteredDebtsForDebtTab={filteredDebtsForDebtTab}
           filteredOrdersForOrderTab={filteredOrdersForOrderTab}

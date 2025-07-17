@@ -57,11 +57,12 @@
       }
     },
     "debts": {
-      ".read": "root.child('employees').child(auth.uid).exists()",
-      ".write": "root.child('employees').child(auth.uid).exists()"
+      ".read": "root.child('employees').child(auth.uid).exists() || (query.orderByChild == 'customerId' && query.equalTo == auth.uid)",
+      ".write": "root.child('employees').child(auth.uid).exists()",
+      ".indexOn": ["customerId"]
     },
     "debtHistory": {
-      ".read": "root.child('employees').child(auth.uid).exists()",
+      ".read": "root.child('employees').child(auth.uid).exists() || (query.orderByChild == 'customerId' && query.equalTo == auth.uid)",
       ".write": "root.child('employees').child(auth.uid).exists()",
       ".indexOn": ["customerId"]
     },

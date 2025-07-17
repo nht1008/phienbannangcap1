@@ -43,7 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Eye, PackageCheck, ReceiptText, Edit3, Ban, X } from 'lucide-react';
-import { formatPhoneNumber, cn, normalizeStringForSearch } from '@/lib/utils';
+import { formatPhoneNumber, cn, normalizeStringForSearch, formatCurrencyForUser } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import CancellationReasonDialog from '@/components/orders/CancellationReasonDialog';
 import { NoDataIllustration } from '@/components/illustrations/NoDataIllustration';
@@ -54,6 +54,7 @@ interface OrdersTabProps {
   currentUser: User | null;
   hasFullAccessRights: boolean;
   onConfirmCancel: (order: Order, reason: string) => void;
+  isCurrentUserCustomer?: boolean;
 }
 
 const getStatusBadgeVariant = (status: OrderStatus): "default" | "secondary" | "destructive" | "outline" => {
@@ -82,7 +83,7 @@ const getStatusColorClass = (status: OrderStatus): string => {
 
 const ALL_ORDER_STATUSES: OrderStatus[] = ['Chờ xác nhận', 'Hoàn thành', 'Đã hủy', 'Yêu cầu hủy'];
 
-export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRights, onConfirmCancel }: OrdersTabProps) {
+export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRights, onConfirmCancel, isCurrentUserCustomer = false }: OrdersTabProps) {
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
   const [isCancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
@@ -206,7 +207,7 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
                           <TableCell>{new Date(order.orderDate).toLocaleString('vi-VN')}</TableCell>
                           <TableCell className="text-right font-bold text-xl">
                             <span className="bg-green-600 text-white px-2 py-1 rounded text-sm">
-                              {order.totalAmount.toLocaleString('vi-VN')} VNĐ
+                              {formatCurrencyForUser(order.totalAmount, isCurrentUserCustomer)}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -325,7 +326,7 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
                                 <p className="text-xs text-muted-foreground">{new Date(order.orderDate).toLocaleDateString('vi-VN')}</p>
                               </div>
                               <div className="text-right">
-                                <span className="bg-green-500 text-white rounded px-2 py-1 text-sm font-bold">{order.totalAmount.toLocaleString('vi-VN')} VNĐ</span>
+                                <span className="bg-green-500 text-white rounded px-2 py-1 text-sm font-bold">{formatCurrencyForUser(order.totalAmount, isCurrentUserCustomer)}</span>
                                 <Badge variant={getStatusBadgeVariant(order.orderStatus)} className={cn("text-xs mt-1 block", getStatusColorClass(order.orderStatus))}>
                                   {order.orderStatus}
                                 </Badge>
@@ -463,8 +464,8 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
                         </TableCell>
                         <TableCell>{item.unit}</TableCell>
                         <TableCell className="text-right">{item.quantityInCart}</TableCell>
-                        <TableCell className="text-right">{item.price.toLocaleString('vi-VN')}</TableCell>
-                        <TableCell className="text-right font-semibold">{(item.price * item.quantityInCart).toLocaleString('vi-VN')}</TableCell>
+                        <TableCell className="text-right">{formatCurrencyForUser(item.price, isCurrentUserCustomer)}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrencyForUser(item.price * item.quantityInCart, isCurrentUserCustomer)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -507,9 +508,9 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
                         </div>
                         <div className="text-right flex-shrink-0 text-xs">
                           <div className="font-medium mb-1">SL: {item.quantityInCart}</div>
-                          <div className="text-muted-foreground mb-1">{item.price.toLocaleString('vi-VN')}</div>
+                          <div className="text-muted-foreground mb-1">{formatCurrencyForUser(item.price, isCurrentUserCustomer)}</div>
                           <div className="text-sm font-bold text-primary">
-                            {(item.price * item.quantityInCart).toLocaleString('vi-VN')}
+                            {formatCurrencyForUser(item.price * item.quantityInCart, isCurrentUserCustomer)}
                           </div>
                         </div>
                       </div>
@@ -522,19 +523,19 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Tổng tiền hàng:</span>
-                  <span className="font-medium">{selectedOrderDetails.subTotal.toLocaleString('vi-VN')}</span>
+                  <span className="font-medium">{formatCurrencyForUser(selectedOrderDetails.subTotal, isCurrentUserCustomer)}</span>
                 </div>
                 {(selectedOrderDetails.overallDiscount || 0) > 0 && (
                   <div className="flex justify-between text-destructive">
                     <span>Giảm giá:</span>
-                    <span className="font-medium">- {(selectedOrderDetails.overallDiscount || 0).toLocaleString('vi-VN')}</span>
+                    <span className="font-medium">- {formatCurrencyForUser(selectedOrderDetails.overallDiscount || 0, isCurrentUserCustomer)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between text-base font-bold text-primary bg-green-100 text-green-800 px-3 py-2 rounded">
                   <span>Tổng cộng:</span>
                   <span className="bg-green-600 text-white px-2 py-1 rounded">
-                    {selectedOrderDetails.totalAmount.toLocaleString('vi-VN')}
+                    {formatCurrencyForUser(selectedOrderDetails.totalAmount, isCurrentUserCustomer)}
                   </span>
                 </div>
               </div>
@@ -564,7 +565,7 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
             <AlertDialogHeader>
               <AlertDialogTitle>Xác nhận hoàn thành đơn hàng?</AlertDialogTitle>
               <AlertDialogDescription>
-                Bạn có chắc chắn đã nhận đúng thông tin chuyển khoản từ khách hàng <span className="font-bold">{orderToConfirm.customerName}</span> với số tiền là <span className="font-bold">{orderToConfirm.totalAmount.toLocaleString('vi-VN')} VNĐ</span>?
+                Bạn có chắc chắn đã nhận đúng thông tin chuyển khoản từ khách hàng <span className="font-bold">{orderToConfirm.customerName}</span> với số tiền là <span className="font-bold">{formatCurrencyForUser(orderToConfirm.totalAmount, isCurrentUserCustomer)}</span>?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

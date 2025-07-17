@@ -61,3 +61,25 @@ export function formatCompactCurrency(amount: number, showUnit: boolean = false)
   
   return showUnit ? amount.toString() : amount.toString();
 }
+
+// Hàm định dạng tiền tệ dành cho khách hàng (ẩn đơn vị VNĐ và chuyển 1000 thành 1K)
+export function formatCurrencyForUser(amount: number, isCustomer: boolean = false): string {
+  if (isCustomer) {
+    // Cho khách hàng: ẩn đơn vị VNĐ và sử dụng định dạng compact
+    return formatCompactCurrency(amount, false);
+  } else {
+    // Cho admin/employee: giữ nguyên định dạng cũ với VNĐ
+    return amount.toLocaleString('vi-VN') + ' VNĐ';
+  }
+}
+
+// Hàm định dạng tiền tệ đầy đủ cho bảng xếp hạng (hiển thị số đầy đủ chứ không rút gọn)
+export function formatCurrencyForLeaderboard(amount: number, isCustomer: boolean = false): string {
+  if (isCustomer) {
+    // Cho khách hàng: ẩn đơn vị VNĐ nhưng hiển thị số đầy đủ
+    return amount.toLocaleString('vi-VN');
+  } else {
+    // Cho admin/employee: hiển thị đầy đủ với VNĐ
+    return amount.toLocaleString('vi-VN') + ' VNĐ';
+  }
+}
