@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-md p-8 space-y-6 bg-card rounded-lg shadow-2xl">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-primary">Đặt lại mật khẩu</h1>
-            <p className="mt-2 text-muted-foreground">Đừng lo lắng, chúng tôi sẽ giúp bạn.</p>
+            <p className="mt-2 text-muted-foreground">Hãy điền chính xác email đã đăng ký để lấy lại mật khẩu của bạn</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

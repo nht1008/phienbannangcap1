@@ -23,6 +23,7 @@ import { PointsIcon } from '@/components/icons/PointsIcon';
 import { ProductFormDialog } from '@/components/products/ProductFormDialog';
 import { PaymentDialog } from '@/components/debt/PaymentDialog';
 import { HeroBanner } from '@/components/storefront/HeroBanner';
+import PreAuthStorefront from '@/components/storefront/PreAuthStorefront';
 
 
 import type { SalesTabHandles } from '@/components/tabs/SalesTab';
@@ -346,6 +347,8 @@ interface FleurManagerLayoutContentProps {
   handleSaveProductDescription: (productId: string, description: string) => Promise<void>;
   isProductDialogOpen: boolean;
   handleProductDialogStateChange: (isOpen: boolean) => void;
+  storeLogo: string;
+  handleLogoUpdate: (newLogoUrl: string) => void;
 }
 
 const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentProps) => {
@@ -371,7 +374,9 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
     salesTabRef,
     handleSaveProductDescription,
     isProductDialogOpen,
-    handleProductDialogStateChange
+    handleProductDialogStateChange,
+    storeLogo,
+    handleLogoUpdate
   } = props;
 
   const { isMobile } = useSidebar();
@@ -467,6 +472,8 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
                    sizeOptions={sizeOptions}
                    unitOptions={unitOptions}
                    onDialogStateChange={handleProductDialogStateChange}
+                   storeLogo={storeLogo}
+                   shopInfo={shopInfo}
                  />,
     'Kho hàng': <WarehouseTab
                     inventory={inventory}
@@ -560,7 +567,7 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
   }), [
       inventory, customersData, enhancedCustomersData, ordersData, invoicesData, debtsData, employeesData, disposalLogEntries, productSalesSummaryData, identifiedSlowMovingProductsData, customerInsightsData, salesByHourData, cart, currentUser, currentUserCustomerData, numericDisplaySize,
       productNameOptions, colorOptions, productQualityOptions, sizeOptions, unitOptions,
-      storefrontProducts, storefrontProductIds,
+      storefrontProducts, storefrontProductIds, storeLogo,
       filteredInvoicesForInvoiceTab, invoiceFilter,
       filteredDebtsForDebtTab, filteredOrdersForOrderTab, orderFilter, analysisFilter,
       filteredInvoicesForAnalysis, filteredDisposalLogForAnalysis,
@@ -572,7 +579,7 @@ const FleurManagerLayoutContent = React.memo((props: FleurManagerLayoutContentPr
       handleInvoiceFilterChange, handleOrderFilterChange, handleAnalysisFilterChange, handleUpdateOrderStatus,
       handleToggleEmployeeRole, handleUpdateEmployeeInfo, handleDeleteEmployee, handleDisposeProductItems,
       openAddProductDialog, openEditProductDialog, handleDeleteProductFromAnywhere, handleUpdateProduct,
-      handleAddToStorefront, handleRemoveFromStorefront, handleDeleteDisposalEntry, onSelectProductGroupForOrder, handleAddToCartFromStorefront, onConfirmCancel, salesTabRef, handleSaveProductDescription
+      handleAddToStorefront, handleRemoveFromStorefront, handleDeleteDisposalEntry, onSelectProductGroupForOrder, handleAddToCartFromStorefront, onConfirmCancel, salesTabRef, handleSaveProductDescription, handleLogoUpdate
   ]);
 
   return (
@@ -767,6 +774,7 @@ export default function FleurManagerPage() {
   const [sizeOptions, setSizeOptions] = useState<string[]>([]);
   const [unitOptions, setUnitOptions] = useState<string[]>([]);
   const [storefrontProductIds, setStorefrontProductIds] = useState<Record<string, boolean>>({});
+  const [storeLogo, setStoreLogo] = useState<string>('');
 
   const [invoiceFilter, setInvoiceFilter] = useState<ActivityDateTimeFilter>(getInitialActivityDateTimeFilter());
   const [orderFilter, setOrderFilter] = useState<ActivityDateTimeFilter>(getInitialActivityDateTimeFilter());
@@ -1313,6 +1321,13 @@ export default function FleurManagerPage() {
     return () => unsubscribeShopInfo();
   }, [currentUser, toast]);
 
+  // Sync storeLogo with shopInfo.logoUrl
+  useEffect(() => {
+    if (shopInfo?.logoUrl) {
+      setStoreLogo(shopInfo.logoUrl);
+    }
+  }, [shopInfo?.logoUrl]);
+
   // Effect to sync currentUserCustomerData with customersData for real-time updates
   useEffect(() => {
     if (isCurrentUserCustomer && currentUser && customersData.length > 0) {
@@ -1327,6 +1342,10 @@ export default function FleurManagerPage() {
   const handleInvoiceFilterChange = useCallback((newFilter: ActivityDateTimeFilter) => setInvoiceFilter(newFilter), []);
   const handleOrderFilterChange = useCallback((newFilter: ActivityDateTimeFilter) => setOrderFilter(newFilter), []);
   const handleAnalysisFilterChange = useCallback((newFilter: ActivityDateTimeFilter) => setAnalysisFilter(newFilter), []);
+
+  const handleLogoUpdate = useCallback((newLogoUrl: string) => {
+    setStoreLogo(newLogoUrl);
+  }, []);
 
 
   const filteredInvoicesForInvoiceTab = useMemo(() => filterActivityByDateTimeRange(invoicesData, invoiceFilter), [invoicesData, invoiceFilter]);
@@ -1743,7 +1762,24 @@ export default function FleurManagerPage() {
   const onClearCart = useCallback(() => { setCart([]); }, []);
   const handleCreateInvoice = useCallback(async (customerName: string, invoiceCartItems: CartItem[], subtotalAfterItemDiscounts: number, paymentMethod: string, amountPaid: number, isGuestCustomer: boolean, employeeId: string, employeeName: string, tierDiscount: number, redeemedPoints?: {points: number, value: number}) => {
     try {
-      const finalTotal = subtotalAfterItemDiscounts;
+      // FIXED: Tính toán đúng finalTotal bằng cách trừ ưu đãi hạng và điểm đổi
+      let finalTotal = subtotalAfterItemDiscounts;
+      
+      // Trừ ưu đãi hạng nếu có
+      if (tierDiscount > 0) {
+        finalTotal -= tierDiscount;
+      }
+      
+      // Trừ giá trị điểm đổi nếu có
+      if (redeemedPoints && redeemedPoints.value > 0) {
+        finalTotal -= redeemedPoints.value;
+      }
+      
+      // Đảm bảo finalTotal không âm
+      if (finalTotal < 0) {
+        finalTotal = 0;
+      }
+      
       let calculatedDebtAmount = 0;
 
       if (finalTotal < 0) {
@@ -1793,10 +1829,13 @@ export default function FleurManagerPage() {
         customerId: customerId,
         customerName: normalizedCustomerName,
         items: itemsForDb as any,
-        total: finalTotal,
+        total: finalTotal, // Đây là tổng tiền cuối cùng sau khi đã trừ mọi ưu đãi
+        originalSubtotal: subtotalAfterItemDiscounts, // Lưu subtotal gốc để theo dõi
         date: new Date().toISOString(),
         paymentMethod,
-        discount: tierDiscount,
+        discount: tierDiscount + (redeemedPoints?.value || 0), // Tổng hợp tất cả giảm giá
+        redeemedPointsValue: redeemedPoints?.value || 0, // Lưu giá trị điểm đã đổi để tham khảo
+        redeemedPoints: redeemedPoints?.points || 0, // Lưu số điểm đã đổi để tham khảo
         amountPaid,
         employeeId,
         employeeName: employeeName || 'Không rõ',
@@ -2516,6 +2555,10 @@ export default function FleurManagerPage() {
     }
     try {
         await set(ref(db, 'shopInfo'), newInfo);
+        // Update local storeLogo state immediately to reflect the change
+        if (newInfo.logoUrl) {
+          setStoreLogo(newInfo.logoUrl);
+        }
         toast({ title: "Thành công", description: "Thông tin cửa hàng đã được cập nhật.", duration: 2000 });
     } catch (error: any) {
         console.error("Error updating shop info:", error);
@@ -3023,7 +3066,7 @@ export default function FleurManagerPage() {
       setCustomerCart(prev => prev.filter(item => item.id !== itemId));
   }, []);
 
-  const handleConfirmOrderFromCart = useCallback(async (discountAmount: number, redeemedPoints?: { points: number; value: number }) => {
+  const handleConfirmOrderFromCart = useCallback(async (discountAmount: number, redeemedPoints?: { points: number; value: number }): Promise<string> => {
     console.log('🔍 handleConfirmOrderFromCart called with:', {
         discountAmount,
         redeemedPoints,
@@ -3036,22 +3079,24 @@ export default function FleurManagerPage() {
     
     if (customerCart.length === 0) {
         toast({ title: "Lỗi", description: "Giỏ hàng của bạn đang trống.", variant: "destructive", duration: 2000 });
-        return;
+        throw new Error("Cart is empty");
     }
     for (const item of customerCart) {
         const stockItem = inventory.find(i => i.id === item.id);
         if (!stockItem || item.quantityInCart > stockItem.quantity) {
             toast({ title: "Lỗi tồn kho", description: `Sản phẩm "${item.name}" không đủ số lượng. Vui lòng kiểm tra lại giỏ hàng.`, variant: "destructive", duration: 2000 });
-            return;
+            throw new Error("Insufficient stock");
         }
     }
 
-    if (!currentUser || !isCurrentUserCustomer) return;
+    if (!currentUser || !isCurrentUserCustomer) {
+        throw new Error("User not authenticated");
+    }
 
     const customerData = currentUserCustomerData;
     if (!customerData) {
         toast({ title: "Lỗi", description: "Không tìm thấy thông tin khách hàng của bạn.", variant: "destructive", duration: 2000 });
-        return;
+        throw new Error("Customer data not found");
     }
 
     const orderItems: OrderItem[] = customerCart.map(item => ({
@@ -3085,7 +3130,7 @@ export default function FleurManagerPage() {
         totalAmount: totalAmount,
         overallDiscount: discountAmount,
         paymentMethod: 'Chuyển khoản',
-        orderStatus: 'Chờ xác nhận',
+        orderStatus: 'Chờ thanh toán', // Changed from 'Chờ xác nhận' to indicate waiting for payment
         orderDate: new Date().toISOString(),
         // Lưu thông tin điểm đổi để xử lý sau - với kiểm tra strict
         redeemedPoints: (() => {
@@ -3119,22 +3164,16 @@ export default function FleurManagerPage() {
         }
         await set(newOrderRef, newOrderData);
 
-        const successMessage = redeemedPoints && redeemedPoints.points > 0 
-            ? `Đơn hàng đã được tạo thành công! Mã đơn hàng: ${newOrderId}. 
-               Bạn đã đổi ${redeemedPoints.points} điểm (${redeemedPoints.value.toLocaleString('vi-VN')} VNĐ). 
-               Điểm sẽ được trừ khi đơn hàng được hoàn thành.`
-            : `Đơn hàng đã được tạo thành công! Mã đơn hàng: ${newOrderId}. Vui lòng sử dụng mã này khi thanh toán.`;
-
-        toast({
-            title: "Đơn hàng đã được tạo thành công!",
-            description: successMessage,
-            duration: 10000, // Keep the toast open longer
-        });
-        setIsCartSheetOpen(false);
+        console.log('✅ Order created successfully with ID:', newOrderId);
+        
+        // Clear cart but don't show success message yet - payment still pending
         setCustomerCart([]);
+        
+        return newOrderId; // Return the order ID for QR code generation
     } catch (error) {
         console.error("Error placing order:", error);
         toast({ title: "Lỗi", description: "Không thể đặt hàng. Vui lòng thử lại.", variant: "destructive", duration: 2000 });
+        throw error;
     }
   }, [customerCart, inventory, currentUser, isCurrentUserCustomer, currentUserCustomerData, toast]);
 
@@ -3288,7 +3327,10 @@ export default function FleurManagerPage() {
 
   // --- Conditional Rendering Logic ---
   if (authLoading) return <LoadingScreen message="Đang tải ứng dụng..." />;
-  if (!currentUser) return <LoadingScreen message="Đang chuyển hướng đến trang đăng nhập..." />;
+  if (!currentUser) {
+    // Hiển thị màn hình pre-auth storefront thay vì chuyển hướng
+    return <PreAuthStorefront shopInfo={shopInfo} storeLogo={storeLogo} />;
+  }
   if (isSettingName) return <SetNameDialog onNameSet={handleNameSet} />;
   
   if (isLoadingAccessRequest) {
@@ -3353,6 +3395,8 @@ export default function FleurManagerPage() {
           handleSaveProductDescription={handleSaveProductDescription}
           isProductDialogOpen={isProductDialogOpen}
           handleProductDialogStateChange={handleProductDialogStateChange}
+          storeLogo={storeLogo}
+          handleLogoUpdate={handleLogoUpdate}
         />
         {/* <ProductOrderDialog
             isOpen={isOrderDialogOpen}

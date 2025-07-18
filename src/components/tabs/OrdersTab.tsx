@@ -45,6 +45,7 @@ import { Separator } from '@/components/ui/separator';
 import { Eye, PackageCheck, ReceiptText, Edit3, Ban, X } from 'lucide-react';
 import { formatPhoneNumber, cn, normalizeStringForSearch, formatCurrencyForUser } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import CancellationReasonDialog from '@/components/orders/CancellationReasonDialog';
 import { NoDataIllustration } from '@/components/illustrations/NoDataIllustration';
 
@@ -90,6 +91,7 @@ export function OrdersTab({ orders, onUpdateStatus, currentUser, hasFullAccessRi
   const [orderToConfirm, setOrderToConfirm] = useState<Order | null>(null);
   const [orderToConfirmCancel, setOrderToConfirmCancel] = useState<Order | null>(null);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const customerCancellationReasons = [
     "Thay đổi ý định mua hàng",

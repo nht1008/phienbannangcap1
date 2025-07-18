@@ -1,70 +1,144 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { doc, updateDoc, getFirestore } from 'firebase/firestore';
-import { firebaseApp as app } from '@/lib/firebase'; // Assuming firebase app is initialized here
-
-const firestore = getFirestore(app);
+import { ref, get, update } from 'firebase/database';
+import { db } from '@/lib/firebase';
+import crypto from 'crypto';
 
 /**
- * This is a webhook endpoint to handle incoming payment notifications.
- * It should be called by your payment provider whenever a successful transaction occurs.
+ * SePay webhook endpoint for automatic payment confirmation
+ * Handles bank transfer notifications from SePay service
  */
 export async function POST(req: NextRequest) {
   try {
-    // SECURITY WARNING: It is crucial to verify that the request is coming from your trusted payment provider.
-    // Most providers sign their webhook requests (e.g., using a secret key). You MUST verify this signature
-    // before trusting the payload. Failing to do so will expose your application to security risks.
-    // The verification logic depends on the provider (e.g., checking an 'Authorization' header or a signature in the payload).
-    //
-    // Example (conceptual):
-    // const signature = req.headers.get('X-Payment-Signature');
-    // const isValid = verifySignature(await req.text(), signature); // You'd need to implement verifySignature
-    // if (!isValid) {
-    //   return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    // }
-
-    const payload = await req.json();
-
-    // The structure of the payload depends entirely on your payment provider.
-    // You will need to adapt this code to match the data they send.
-    // For example, a service monitoring bank transfers might send something like:
-    // {
-    //   "transactionId": "FT123456789",
-    //   "amount": 50000,
-    //   "description": "CK don hang ABCXYZ", // You might need to parse the order ID from here
-    //   "timestamp": "2025-07-01T10:00:00Z"
-    // }
-    const { orderId, amount, transactionId } = payload; // This is a simplified, ideal structure.
-
-    if (!orderId) {
-      console.warn('Webhook received without an orderId:', payload);
-      return NextResponse.json({ error: 'Order ID is missing in payload' }, { status: 400 });
+    // SePay signature verification
+    const signature = req.headers.get('X-SePay-Signature');
+    const rawBody = await req.text();
+    
+    // Verify SePay signature (if provided)
+    if (signature && process.env.SEPAY_WEBHOOK_SECRET) {
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.SEPAY_WEBHOOK_SECRET)
+        .update(rawBody)
+        .digest('hex');
+      
+      if (signature !== expectedSignature) {
+        console.error('Invalid SePay signature');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
     }
 
-    // TODO: It's good practice to fetch the order from your database first.
-    // 1. Check if the order exists.
-    // 2. Verify that the order is not already marked as 'paid'.
-    // 3. Check if the `amount` from the webhook matches the order's total amount.
+    const payload = JSON.parse(rawBody);
 
-    const orderRef = doc(firestore, 'orders', orderId);
+    console.log('📦 SePay webhook received:', payload);
 
-    // Update the order status to 'paid' and store payment details.
-    await updateDoc(orderRef, {
-      status: 'paid',
-      paymentMethod: 'webhook',
-      paymentDetails: {
-        transactionId,
-        amount,
-        paidAt: new Date(),
-      },
+    // SePay typically sends data in this format:
+    // {
+    //   "transferType": "in", 
+    //   "transferAmount": 50000,
+    //   "accountNumber": "0123456789",
+    //   "subAccount": "",
+    //   "transferContent": "CK don hang ORDER123456",
+    //   "referenceCode": "FT21234567890",
+    //   "description": "Customer payment",
+    //   "transferTime": "2025-01-18 10:30:45"
+    // }
+    
+    const { 
+      transferContent, 
+      transferAmount, 
+      referenceCode, 
+      transferTime,
+      transferType = "in"
+    } = payload;
+
+    // Only process incoming transfers
+    if (transferType !== "in") {
+      console.log('Ignoring outgoing transfer');
+      return NextResponse.json({ received: true, message: 'Outgoing transfer ignored.' });
+    }
+
+    if (!transferContent || !transferAmount) {
+      console.warn('Missing required fields in SePay webhook:', payload);
+      return NextResponse.json({ error: 'Missing transfer content or amount' }, { status: 400 });
+    }
+
+    // Extract order ID from transfer content
+    // Expected format: "CK don hang ORDER123456" or "Thanh toan don hang ORDER123456"
+    const orderIdMatch = transferContent.match(/ORDER[A-Za-z0-9-_]+|[A-Za-z0-9-_]{20,}/);
+    if (!orderIdMatch) {
+      console.warn('Could not extract order ID from transfer content:', transferContent);
+      return NextResponse.json({ error: 'Order ID not found in transfer content' }, { status: 400 });
+    }
+
+    const orderId = orderIdMatch[0];
+    console.log('📝 Processing payment for order:', orderId);
+
+    // Check if this is an Order (pending) or already an Invoice
+    const orderRef = ref(db, `orders/${orderId}`);
+    const invoiceRef = ref(db, `invoices/${orderId}`);
+    
+    const [orderSnapshot, invoiceSnapshot] = await Promise.all([
+      get(orderRef),
+      get(invoiceRef)
+    ]);
+
+    if (orderSnapshot.exists()) {
+      // Update order status to completed
+      const orderData = orderSnapshot.val();
+      
+      // Verify amount matches (with some tolerance for bank fees)
+      const expectedAmount = orderData.totalAmount;
+      const tolerance = expectedAmount * 0.05; // 5% tolerance
+      
+      if (Math.abs(transferAmount - expectedAmount) > tolerance) {
+        console.warn(`Amount mismatch: expected ${expectedAmount}, received ${transferAmount}`);
+        // Still process but log the discrepancy
+      }
+
+      const updates = {
+        [`orders/${orderId}/orderStatus`]: 'Hoàn thành',
+        [`orders/${orderId}/paymentStatus`]: 'Đã thanh toán',
+        [`orders/${orderId}/paymentDetails`]: {
+          method: 'Chuyển khoản',
+          amount: transferAmount,
+          referenceCode: referenceCode,
+          paidAt: transferTime || new Date().toISOString(),
+          autoConfirmed: true
+        },
+        [`orders/${orderId}/completionDate`]: new Date().toISOString()
+      };
+
+      await update(ref(db), updates);
+      console.log(`✅ Order ${orderId} automatically confirmed via SePay`);
+      
+    } else if (invoiceSnapshot.exists()) {
+      // This is already an invoice, update payment status
+      const invoiceData = invoiceSnapshot.val();
+      
+      const updates = {
+        [`invoices/${orderId}/paymentStatus`]: 'Đã thanh toán',
+        [`invoices/${orderId}/paymentDetails`]: {
+          method: 'Chuyển khoản',
+          amount: transferAmount,
+          referenceCode: referenceCode,
+          paidAt: transferTime || new Date().toISOString(),
+          autoConfirmed: true
+        }
+      };
+
+      await update(ref(db), updates);
+      console.log(`✅ Invoice ${orderId} payment confirmed via SePay`);
+      
+    } else {
+      console.warn(`Order/Invoice ${orderId} not found in database`);
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ 
+      received: true, 
+      message: 'Payment confirmed successfully via SePay',
+      orderId: orderId,
+      amount: transferAmount
     });
-
-    console.log(`Payment confirmed for order ${orderId} via webhook.`);
-
-    // When this update happens, your client-side application (if it's listening
-    // to Firestore real-time updates for this order) will see the change
-    // and can then display a "Payment Successful" notification to the user.
-
-    return NextResponse.json({ received: true, message: 'Payment confirmed successfully.' });
   } catch (error) {
     console.error('Error processing payment webhook:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

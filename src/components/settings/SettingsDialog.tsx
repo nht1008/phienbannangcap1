@@ -13,11 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import type { ShopInfo } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useCloudinaryUpload } from '@/hooks/use-cloudinary-upload';
 import { UploadCloud, Save } from 'lucide-react'; // Added Save icon
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 
@@ -43,10 +42,10 @@ const defaultShopInfo: ShopInfo = {
 interface SettingsDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  overallFontSize: OverallFontSize;
-  onOverallFontSizeChange: (size: OverallFontSize) => void;
-  numericDisplaySize: NumericDisplaySize;
-  onNumericDisplaySizeChange: (size: NumericDisplaySize) => void;
+  overallFontSize?: OverallFontSize;
+  onOverallFontSizeChange?: (size: OverallFontSize) => void;
+  numericDisplaySize?: NumericDisplaySize;
+  onNumericDisplaySizeChange?: (size: NumericDisplaySize) => void;
   shopInfo: ShopInfo | null;
   onSaveShopInfo: (newInfo: ShopInfo) => Promise<void>;
   hasAdminOrManagerRights: boolean;
@@ -68,37 +67,21 @@ export function SettingsDialog({
   hasAdminOrManagerRights,
   isLoadingShopInfo
 }: SettingsDialogProps) {
-  const [currentOverallSize, setCurrentOverallSize] = useState<OverallFontSize>(overallFontSize);
-  const [currentNumericSize, setCurrentNumericSize] = useState<NumericDisplaySize>(numericDisplaySize);
   const [editableShopInfo, setEditableShopInfo] = useState<ShopInfo>(shopInfo || defaultShopInfo);
   const [isSavingShopInfo, setIsSavingShopInfo] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    setCurrentOverallSize(overallFontSize);
-  }, [overallFontSize]);
-
-  useEffect(() => {
-    setCurrentNumericSize(numericDisplaySize);
-  }, [numericDisplaySize]);
+  const { uploadImage, isUploading: isUploadingLogo } = useCloudinaryUpload();
 
   useEffect(() => {
     setEditableShopInfo(shopInfo || defaultShopInfo);
   }, [shopInfo]);
-
-
-  const handleApplySettings = () => {
-    onOverallFontSizeChange(currentOverallSize);
-    onNumericDisplaySizeChange(currentNumericSize);
-    toast({ title: "Cài đặt hiển thị đã được áp dụng.", variant: "default" });
-  };
 
   const handleShopInfoInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setEditableShopInfo(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > MAX_LOGO_SIZE_BYTES) {
@@ -110,20 +93,24 @@ export function SettingsDialog({
         e.target.value = ""; // Clear the input
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditableShopInfo(prev => ({ ...prev, logoUrl: reader.result as string }));
-      };
-      reader.onerror = () => {
+
+      try {
+        const uploadResult = await uploadImage(file, 'shop-logos');
+        if (uploadResult) {
+          setEditableShopInfo(prev => ({ ...prev, logoUrl: uploadResult.url }));
+          toast({
+            title: "Thành công",
+            description: "Logo đã được tải lên thành công",
+          });
+        }
+      } catch (error) {
         toast({
-          title: "Lỗi đọc file",
-          description: "Không thể đọc file ảnh đã chọn.",
+          title: "Lỗi tải ảnh",
+          description: "Không thể tải logo lên. Vui lòng thử lại.",
           variant: "destructive",
         });
       }
-      reader.readAsDataURL(file);
-    } else {
-       setEditableShopInfo(prev => ({ ...prev, logoUrl: shopInfo?.logoUrl || defaultShopInfo.logoUrl }));
+      e.target.value = ""; // Clear the input
     }
   };
 
@@ -155,54 +142,8 @@ export function SettingsDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          <section>
-            <h3 className="text-lg font-semibold mb-2 text-primary">Kích thước hiển thị</h3>
-            <div className="space-y-4">
-              <div>
-                <Label className="mb-2 block">Cỡ chữ chung:</Label>
-                <RadioGroup value={currentOverallSize} onValueChange={(value) => setCurrentOverallSize(value as OverallFontSize)} className="flex space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="sm" id="fs-sm" />
-                    <Label htmlFor="fs-sm">Nhỏ</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="md" id="fs-md" />
-                    <Label htmlFor="fs-md">Vừa</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="lg" id="fs-lg" />
-                    <Label htmlFor="fs-lg">Lớn</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              <div>
-                <Label className="mb-2 block">Cỡ chữ số (cho các mục tổng tiền):</Label>
-                 <RadioGroup value={currentNumericSize} onValueChange={(value) => setCurrentNumericSize(value as NumericDisplaySize)} className="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="text-xl" id="ns-xl" />
-                    <Label htmlFor="ns-xl">Nhỏ (XL)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="text-2xl" id="ns-2xl" />
-                    <Label htmlFor="ns-2xl">Vừa (2XL)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="text-3xl" id="ns-3xl" />
-                    <Label htmlFor="ns-3xl">Lớn (3XL)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="text-4xl" id="ns-4xl" />
-                    <Label htmlFor="ns-4xl">Rất Lớn (4XL)</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              <Button onClick={handleApplySettings} className="w-full sm:w-auto">Áp dụng cài đặt hiển thị</Button>
-            </div>
-          </section>
-
           {hasAdminOrManagerRights && (
             <>
-              <Separator />
               <section>
                 <h3 className="text-lg font-semibold mb-3 text-primary">Thông tin cửa hàng (Quản trị viên/Quản lý)</h3>
                 {isLoadingShopInfo ? (
@@ -236,9 +177,14 @@ export function SettingsDialog({
                             type="file"
                             accept="image/*"
                             onChange={handleLogoFileChange}
+                            disabled={isUploadingLogo}
                             className="bg-card flex-grow file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                         />
-                        {editableShopInfo.logoUrl ? (
+                        {isUploadingLogo ? (
+                            <div className="w-[60px] h-[60px] flex items-center justify-center rounded-md border bg-muted/50">
+                                <LoadingSpinner size={24} />
+                            </div>
+                        ) : editableShopInfo.logoUrl ? (
                             <Image
                                 src={editableShopInfo.logoUrl}
                                 alt="Xem trước logo"
@@ -259,28 +205,11 @@ export function SettingsDialog({
                     </div>
                   </div>
 
-                  <Separator className="my-3"/>
-                   <h4 className="text-md font-medium text-primary/90">Thông tin chuyển khoản</h4>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <Label htmlFor="bankAccountName">Tên chủ tài khoản</Label>
-                        <Input id="bankAccountName" name="bankAccountName" value={editableShopInfo.bankAccountName} onChange={handleShopInfoInputChange} placeholder="VD: NGUYEN VAN A" />
-                    </div>
-                    <div>
-                        <Label htmlFor="bankAccountNumber">Số tài khoản</Label>
-                        <Input id="bankAccountNumber" name="bankAccountNumber" value={editableShopInfo.bankAccountNumber} onChange={handleShopInfoInputChange} placeholder="VD: 0123456789" />
-                    </div>
-                    </div>
-                    <div>
-                        <Label htmlFor="bankName">Tên ngân hàng</Label>
-                        <Input id="bankName" name="bankName" value={editableShopInfo.bankName} onChange={handleShopInfoInputChange} placeholder="VD: Vietcombank - CN ABC" />
-                    </div>
-
-                  <Button type="submit" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white" disabled={isSavingShopInfo}>
-                    {isSavingShopInfo ? (
+                  <Button type="submit" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white" disabled={isSavingShopInfo || isUploadingLogo}>
+                    {isSavingShopInfo || isUploadingLogo ? (
                         <>
                             <LoadingSpinner size={20} className="mr-2 text-white" />
-                            Đang lưu...
+                            {isUploadingLogo ? 'Đang tải logo...' : 'Đang lưu...'}
                         </>
                     ) : (
                         <>

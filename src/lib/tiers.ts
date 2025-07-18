@@ -41,7 +41,10 @@ export function calculateDiscount(customer: Customer | null, totalAmount: number
     };
   }
 
-  const discountAmount = Math.min(totalAmount * tierInfo.discount, tierInfo.limit === Infinity ? Infinity : tierInfo.limit);
+  let discountAmount = Math.min(totalAmount * tierInfo.discount, tierInfo.limit === Infinity ? Infinity : tierInfo.limit);
+  
+  // Làm tròn lên đến đơn vị nghìn (K) - 16.6 -> 17, 16.5 -> 17, 16.4 -> 16
+  discountAmount = Math.round(discountAmount / 1000) * 1000;
   
   if (discountAmount === 0) {
      return { success: false, message: 'Không có ưu đãi nào được áp dụng.', discountAmount: 0, discountPercentage: 0 };

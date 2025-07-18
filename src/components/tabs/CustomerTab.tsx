@@ -23,6 +23,7 @@ import { ref, onValue, update, set, serverTimestamp, remove } from "firebase/dat
 import { SmartSearchBar, SearchHighlight } from '@/components/shared/SmartSearchBar';
 import { useCustomerSearch } from '@/hooks/use-smart-search';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CustomerTabProps {
   customers: Customer[];
@@ -38,6 +39,7 @@ interface CustomerTabProps {
 const initialFormState: Omit<Customer, 'id' | 'email'> = { name: '', phone: '', address: '', zaloName: '' };
 
 export function CustomerTab({ customers, invoices, onAddCustomer, onUpdateCustomer, onDeleteCustomer, hasFullAccessRights, currentUser, isCurrentUserAdmin }: CustomerTabProps) {
+  const isMobile = useIsMobile();
   const [isAdding, setIsAdding] = useState(false);
   const [newCustomer, setNewCustomer] = useState<Omit<Customer, 'id' | 'email'>>(initialFormState);
 
@@ -426,7 +428,8 @@ export function CustomerTab({ customers, invoices, onAddCustomer, onUpdateCustom
             />
           </div>
 
-          <div className="overflow-x-auto mt-4">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto mt-4">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -513,12 +516,122 @@ export function CustomerTab({ customers, invoices, onAddCustomer, onUpdateCustom
               </TableBody>
             </Table>
           </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden mt-4">
+            {customers.length === 0 && !isAdding && !isEditing ? (
+              <div className="text-center py-16">
+                <div className="flex flex-col items-center gap-4">
+                  <NoCustomersIllustration />
+                  <h3 className="text-xl font-semibold">Chưa có khách hàng nào</h3>
+                  <p className="text-muted-foreground">Bắt đầu quản lý bằng cách thêm khách hàng đầu tiên của bạn.</p>
+                  {hasFullAccessRights && (
+                     <Button
+                      onClick={() => { setIsAdding(true); if (isEditing) setIsEditing(false); setNewCustomer(initialFormState); }}
+                      variant="default"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2"
+                    >
+                        <PlusCircle className="mr-2 h-4 w-4" /> Thêm khách hàng
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredCustomers.map((customer, index) => (
+                  <Card key={customer.id} className="border-l-4 border-l-primary">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">#{index + 1}</span>
+                            <div>
+                              <h3 className="font-medium">
+                                <SearchHighlight 
+                                  text={customer.name} 
+                                  searchQuery={searchQuery}
+                                />
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                <SearchHighlight 
+                                  text={formatPhoneNumber(customer.phone)} 
+                                  searchQuery={searchQuery}
+                                />
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="text-sm space-y-1">
+                          <p>
+                            <span className="text-muted-foreground">Email:</span> 
+                            <SearchHighlight 
+                              text={customer.email || 'N/A'} 
+                              searchQuery={searchQuery}
+                            />
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Zalo:</span> 
+                            <SearchHighlight 
+                              text={customer.zaloName || 'N/A'} 
+                              searchQuery={searchQuery}
+                            />
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Địa chỉ:</span> 
+                            <SearchHighlight 
+                              text={customer.address || 'N/A'} 
+                              searchQuery={searchQuery}
+                            />
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => openCustomerDetailsDialog(customer)}
+                            className="flex-1"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Xem
+                          </Button>
+                          {hasFullAccessRights && (
+                            <>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => openEditDialog(customer)}
+                                className="flex-1"
+                              >
+                                <Pencil className="h-4 w-4 mr-1" />
+                                Sửa
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={() => openDeleteConfirmDialog(customer)}
+                                className="flex-1"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Xóa
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       {isEditing && customerToEdit && hasFullAccessRights && (
         <Dialog open={isEditing} onOpenChange={(open) => { if (!open) { setIsEditing(false); setCustomerToEdit(null); }}}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Chỉnh sửa thông tin khách hàng</DialogTitle>
               <DialogDescription>Cập nhật thông tin cho {customerToEdit.name}.</DialogDescription>
@@ -547,11 +660,11 @@ export function CustomerTab({ customers, invoices, onAddCustomer, onUpdateCustom
 
       {selectedCustomerForDetails && (
         <Dialog open={isCustomerDetailsModalOpen} onOpenChange={closeCustomerDetailsDialog}>
-          <DialogContent className="sm:max-w-2xl">
+          <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Lịch sử giao dịch của: {selectedCustomerForDetails.name}</DialogTitle>
+              <DialogTitle className="text-xl md:text-2xl">Lịch sử giao dịch của: {selectedCustomerForDetails.name}</DialogTitle>
               <DialogDescription asChild>
-                <div>
+                <div className="text-sm space-y-1">
                   <p><strong>Số điện thoại:</strong> {formatPhoneNumber(selectedCustomerForDetails.phone)}</p>
                   <p><strong>Email:</strong> {selectedCustomerForDetails.email || 'N/A'}</p>
                   <p><strong>Tên Zalo:</strong> {selectedCustomerForDetails.zaloName || 'N/A'}</p>
@@ -566,51 +679,113 @@ export function CustomerTab({ customers, invoices, onAddCustomer, onUpdateCustom
               .length === 0 ? (
               <p className="text-muted-foreground text-center py-4">Khách hàng này chưa có giao dịch nào.</p>
             ) : (
-              <ScrollArea className="max-h-[60vh] no-scrollbar">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">STT</TableHead>
-                      <TableHead>ID Hóa đơn</TableHead>
-                      <TableHead>Ngày</TableHead>
-                      <TableHead>Giờ</TableHead>
-                      <TableHead className="text-right">Tổng tiền</TableHead>
-                      <TableHead>PT Thanh toán</TableHead>
-                      <TableHead className="text-right text-destructive">Tiền nợ</TableHead>
-                      <TableHead className="text-center">Chi tiết Hóa đơn</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {invoices
-                      .filter(invoice => normalizeStringForSearch(invoice.customerName) === normalizeStringForSearch(selectedCustomerForDetails.name))
-                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                      .map((invoice, index) => {
-                      const invoiceDate = new Date(invoice.date);
-                      return (
-                        <TableRow key={invoice.id} className={invoice.debtAmount && invoice.debtAmount > 0 ? "bg-destructive/5" : ""}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell>{invoice.id.substring(0, 8)}...</TableCell>
-                          <TableCell>{invoiceDate.toLocaleDateString('vi-VN')}</TableCell>
-                          <TableCell>{invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</TableCell>
-                          <TableCell className="text-right">{invoice.total.toLocaleString('vi-VN')} VNĐ</TableCell>
-                          <TableCell>{invoice.paymentMethod}</TableCell>
-                          <TableCell className="text-right text-destructive">
-                            {(invoice.debtAmount ?? 0).toLocaleString('vi-VN')} VNĐ
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" onClick={() => openInvoiceItemDetailsDialog(invoice)}>
-                                <ListChecks className="h-4 w-4"/>
-                            </Button>
-                          </TableCell>
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block">
+                  <ScrollArea className="max-h-[60vh] no-scrollbar">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">STT</TableHead>
+                          <TableHead>ID Hóa đơn</TableHead>
+                          <TableHead>Ngày</TableHead>
+                          <TableHead>Giờ</TableHead>
+                          <TableHead className="text-right">Tổng tiền</TableHead>
+                          <TableHead>PT Thanh toán</TableHead>
+                          <TableHead className="text-right text-destructive">Tiền nợ</TableHead>
+                          <TableHead className="text-center">Chi tiết Hóa đơn</TableHead>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
+                      </TableHeader>
+                      <TableBody>
+                        {invoices
+                          .filter(invoice => normalizeStringForSearch(invoice.customerName) === normalizeStringForSearch(selectedCustomerForDetails.name))
+                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                          .map((invoice, index) => {
+                          const invoiceDate = new Date(invoice.date);
+                          return (
+                            <TableRow key={invoice.id} className={invoice.debtAmount && invoice.debtAmount > 0 ? "bg-destructive/5" : ""}>
+                              <TableCell>{index + 1}</TableCell>
+                              <TableCell>{invoice.id.substring(0, 8)}...</TableCell>
+                              <TableCell>{invoiceDate.toLocaleDateString('vi-VN')}</TableCell>
+                              <TableCell>{invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</TableCell>
+                              <TableCell className="text-right">{invoice.total.toLocaleString('vi-VN')} VNĐ</TableCell>
+                              <TableCell>{invoice.paymentMethod}</TableCell>
+                              <TableCell className="text-right text-destructive">
+                                {(invoice.debtAmount ?? 0).toLocaleString('vi-VN')} VNĐ
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" onClick={() => openInvoiceItemDetailsDialog(invoice)}>
+                                    <ListChecks className="h-4 w-4"/>
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden">
+                  <ScrollArea className="max-h-[60vh]">
+                    <div className="space-y-3">
+                      {invoices
+                        .filter(invoice => normalizeStringForSearch(invoice.customerName) === normalizeStringForSearch(selectedCustomerForDetails.name))
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .map((invoice, index) => {
+                        const invoiceDate = new Date(invoice.date);
+                        return (
+                          <Card key={invoice.id} className={`border-l-4 ${invoice.debtAmount && invoice.debtAmount > 0 ? 'border-l-red-500 bg-destructive/5' : 'border-l-green-500'}`}>
+                            <CardContent className="p-3">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">#{index + 1}</span>
+                                    <div>
+                                      <p className="font-medium text-sm">ID: {invoice.id.substring(0, 8)}...</p>
+                                      <p className="text-xs text-muted-foreground">{invoice.paymentMethod}</p>
+                                    </div>
+                                  </div>
+                                  <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
+                                    {invoice.total.toLocaleString('vi-VN')} VNĐ
+                                  </span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="text-muted-foreground">
+                                    {invoiceDate.toLocaleDateString('vi-VN')} {invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                  {invoice.debtAmount && invoice.debtAmount > 0 && (
+                                    <span className="bg-red-600 text-white px-2 py-1 rounded">
+                                      Nợ: {invoice.debtAmount.toLocaleString('vi-VN')} VNĐ
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="pt-2 border-t">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => openInvoiceItemDetailsDialog(invoice)}
+                                    className="w-full"
+                                  >
+                                    <ListChecks className="h-4 w-4 mr-1" />
+                                    Xem chi tiết
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </>
             )}
             <DialogFooter className="mt-4">
-              <Button variant="outline" onClick={closeCustomerDetailsDialog}>Đóng</Button>
+              <Button variant="outline" onClick={closeCustomerDetailsDialog} className="w-full sm:w-auto">Đóng</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -618,7 +793,7 @@ export function CustomerTab({ customers, invoices, onAddCustomer, onUpdateCustom
 
       {invoiceForDetailedView && (
         <Dialog open={isInvoiceDetailModalOpen} onOpenChange={closeInvoiceItemDetailsDialog}>
-          <DialogContent className="sm:max-w-3xl">
+          <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle 
                 className="text-xl cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"

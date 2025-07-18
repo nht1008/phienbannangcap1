@@ -31,6 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { ref, onValue, update, set } from "firebase/database";
 import { useAuthorization } from '@/hooks/use-authorization';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 interface ActivityDateTimeFilter {
@@ -119,6 +120,7 @@ export function EmployeeTab({
     onDeleteEmployee,
 }: EmployeeTabProps) {
   const { can_manage, is_admin } = useAuthorization();
+  const isMobile = useIsMobile();
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [activityFilter, setActivityFilter] = useState<ActivityDateTimeFilter>({
     startDate: null,
@@ -478,7 +480,8 @@ export function EmployeeTab({
       </CardHeader>
       <CardContent className="flex flex-col space-y-6">
         <div>
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -611,6 +614,117 @@ export function EmployeeTab({
               </TableBody>
             </Table>
           </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden">
+            {displayEmployees.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="flex flex-col items-center gap-4">
+                  <NoEmployeesIllustration />
+                  <h3 className="text-xl font-semibold">Chưa có nhân viên</h3>
+                  <p className="text-muted-foreground">Bạn chưa có nhân viên nào. Hãy bắt đầu xây dựng đội ngũ.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {displayEmployees.map((emp, index) => (
+                  <Card 
+                    key={emp.id}
+                    className={`cursor-pointer transition-colors border-l-4 ${selectedEmployee?.id === emp.id ? 'bg-primary/10 border-l-primary' : 'border-l-transparent hover:border-l-primary/50'}`}
+                    onClick={() => handleSelectEmployee(emp)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">#{index + 1}</span>
+                            <div>
+                              <h3 className="font-medium">{emp.name}</h3>
+                              <p className="text-sm text-muted-foreground">{emp.email}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {emp.position === 'ADMIN' ? (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-destructive text-destructive-foreground">
+                                {emp.position}
+                              </span>
+                            ) : emp.position === 'Quản lý' ? (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-sky-500 text-white">
+                                {emp.position}
+                              </span>
+                            ) : emp.position === 'Nhân viên' ? (
+                               <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-500 text-white">
+                                {emp.position}
+                              </span>
+                            ) : (
+                              emp.position
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="text-sm">
+                          <p><span className="text-muted-foreground">SĐT:</span> {formatPhoneNumber(emp.phone) || 'Chưa cập nhật'}</p>
+                        </div>
+
+                        {can_manage && emp.email !== adminEmail && (
+                          <div className="flex gap-2 pt-2 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(emp);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4 mr-1 text-yellow-600" />
+                              Sửa
+                            </Button>
+                            
+                            {is_admin && (emp.position === 'Nhân viên' || emp.position === 'Quản lý') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleRole(emp);
+                                }}
+                              >
+                                {emp.position === 'Nhân viên' ? (
+                                  <>
+                                    <UserCog className="h-4 w-4 mr-1 text-blue-600" />
+                                    Nâng cấp
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserX className="h-4 w-4 mr-1 text-orange-600" />
+                                    Hạ cấp
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            
+                            {is_admin && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDeleteEmployeeDialog(emp);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Xóa
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {selectedEmployee && (
@@ -650,7 +764,7 @@ export function EmployeeTab({
                             defaultMonth={activityFilter.startDate || new Date()}
                             selected={{ from: activityFilter.startDate || undefined, to: activityFilter.endDate || undefined }}
                             onSelect={(range) => setActivityFilter(prev => ({ ...prev, startDate: range?.from || null, endDate: range?.to || null }))}
-                            numberOfMonths={2}
+                            numberOfMonths={isMobile ? 1 : 2}
                             locale={vi}
                           />
                         </PopoverContent>
@@ -673,11 +787,11 @@ export function EmployeeTab({
                       />
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-2 flex-wrap">
-                    <Button onClick={() => setDateRangePreset('today')} variant="outline" className="h-9">Hôm nay</Button>
-                    <Button onClick={() => setDateRangePreset('this_month')} variant="outline" className="h-9">Tháng này</Button>
-                    <Button onClick={() => setDateRangePreset('last_month')} variant="outline" className="h-9">Tháng trước</Button>
-                    <Button onClick={() => setDateRangePreset('all_time')} variant="secondary" className="h-9">Xem tất cả</Button>
+                  <div className="grid grid-cols-2 md:flex gap-2 mt-2">
+                    <Button onClick={() => setDateRangePreset('today')} variant="outline" className="h-9 text-xs md:text-sm">Hôm nay</Button>
+                    <Button onClick={() => setDateRangePreset('this_month')} variant="outline" className="h-9 text-xs md:text-sm">Tháng này</Button>
+                    <Button onClick={() => setDateRangePreset('last_month')} variant="outline" className="h-9 text-xs md:text-sm">Tháng trước</Button>
+                    <Button onClick={() => setDateRangePreset('all_time')} variant="secondary" className="h-9 text-xs md:text-sm col-span-2 md:col-span-1">Xem tất cả</Button>
                   </div>
               </div>
             </CardHeader>
@@ -720,48 +834,94 @@ export function EmployeeTab({
                 {filteredEmployeeInvoices.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Không có hóa đơn nào phù hợp với bộ lọc.</p>
                 ) : (
-                <ScrollArea className="h-60 border rounded-md p-2 no-scrollbar">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">STT</TableHead>
-                        <TableHead>ID HĐ</TableHead>
-                        <TableHead>Khách hàng</TableHead>
-                        <TableHead>Thời gian</TableHead>
-                        <TableHead className="text-right">Tổng tiền</TableHead>
-                        <TableHead className="text-right">Giảm giá</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredEmployeeInvoices.map((invoice, index) => {
-                        const invoiceDate = new Date(invoice.date);
-                        return (
-                          <TableRow key={invoice.id}>
-                            <TableCell>{index + 1}</TableCell>
-                            <TableCell>{invoice.id.substring(0, 8)}...</TableCell>
-                            <TableCell>{invoice.customerName}</TableCell>
-                            <TableCell>
-                              <div className="text-sm">
-                                <div>{invoiceDate.toLocaleDateString('vi-VN')}</div>
-                                <div className="text-muted-foreground">{invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className="bg-green-600 text-white px-2 py-1 rounded">
-                                {(invoice.total || 0).toLocaleString('vi-VN')} VNĐ
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className="bg-red-600 text-white px-2 py-1 rounded">
-                                {(invoice.discount ?? 0).toLocaleString('vi-VN')} VNĐ
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
+                  <>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block">
+                      <ScrollArea className="h-60 border rounded-md p-2 no-scrollbar">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-12">STT</TableHead>
+                              <TableHead>ID HĐ</TableHead>
+                              <TableHead>Khách hàng</TableHead>
+                              <TableHead>Thời gian</TableHead>
+                              <TableHead className="text-right">Tổng tiền</TableHead>
+                              <TableHead className="text-right">Giảm giá</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredEmployeeInvoices.map((invoice, index) => {
+                              const invoiceDate = new Date(invoice.date);
+                              return (
+                                <TableRow key={invoice.id}>
+                                  <TableCell>{index + 1}</TableCell>
+                                  <TableCell>{invoice.id.substring(0, 8)}...</TableCell>
+                                  <TableCell>{invoice.customerName}</TableCell>
+                                  <TableCell>
+                                    <div className="text-sm">
+                                      <div>{invoiceDate.toLocaleDateString('vi-VN')}</div>
+                                      <div className="text-muted-foreground">{invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <span className="bg-green-600 text-white px-2 py-1 rounded">
+                                      {(invoice.total || 0).toLocaleString('vi-VN')} VNĐ
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <span className="bg-red-600 text-white px-2 py-1 rounded">
+                                      {(invoice.discount ?? 0).toLocaleString('vi-VN')} VNĐ
+                                    </span>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="md:hidden">
+                      <ScrollArea className="h-60 border rounded-md p-2">
+                        <div className="space-y-3">
+                          {filteredEmployeeInvoices.map((invoice, index) => {
+                            const invoiceDate = new Date(invoice.date);
+                            return (
+                              <Card key={invoice.id} className="border-l-4 border-l-green-500">
+                                <CardContent className="p-3">
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">#{index + 1}</span>
+                                        <div>
+                                          <p className="font-medium text-sm">ID: {invoice.id.substring(0, 8)}...</p>
+                                          <p className="text-xs text-muted-foreground">{invoice.customerName}</p>
+                                        </div>
+                                      </div>
+                                      <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
+                                        {(invoice.total || 0).toLocaleString('vi-VN')} VNĐ
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center text-xs">
+                                      <div>
+                                        <span className="text-muted-foreground">Thời gian: </span>
+                                        <span>{invoiceDate.toLocaleDateString('vi-VN')} {invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                      </div>
+                                      <span className="bg-red-600 text-white px-2 py-1 rounded">
+                                        GG: {(invoice.discount ?? 0).toLocaleString('vi-VN')} VNĐ
+                                      </span>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -772,49 +932,94 @@ export function EmployeeTab({
                  {employeeActivityLog.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Không có hoạt động nào phù hợp với bộ lọc.</p>
                 ) : (
-                <ScrollArea className="h-60 border rounded-md p-2 no-scrollbar">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">STT</TableHead>
-                        <TableHead>Thời gian</TableHead>
-                        <TableHead className="w-40">Hành động</TableHead>
-                        <TableHead>Khách hàng</TableHead>
-                        <TableHead className="text-right w-48">Số tiền</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {employeeActivityLog.map((activity, index) => {
-                        const activityDate = new Date(activity.date);
-                        return (
-                          <TableRow key={activity.key}>
-                            <TableCell>{index + 1}</TableCell>
-                            <TableCell>
-                              <div className="text-sm">
-                                <div>{activityDate.toLocaleDateString('vi-VN')}</div>
-                                <div className="text-muted-foreground">{activityDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className={cn(
-                                "px-2 py-1 rounded-full text-xs font-semibold",
-                                activity.type === 'Tạo nợ' ? 'bg-destructive text-destructive-foreground' : 'bg-success text-success-foreground'
-                              )}>
-                                {activity.type}
-                              </span>
-                            </TableCell>
-                            <TableCell>{activity.customerName}</TableCell>
-                            <TableCell className="text-right">
-                              <span className="bg-red-600 text-white px-2 py-1 rounded font-semibold">
-                                {(activity.amount || 0).toLocaleString('vi-VN')} VNĐ
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
+                  <>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block">
+                      <ScrollArea className="h-60 border rounded-md p-2 no-scrollbar">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-12">STT</TableHead>
+                              <TableHead>Thời gian</TableHead>
+                              <TableHead className="w-40">Hành động</TableHead>
+                              <TableHead>Khách hàng</TableHead>
+                              <TableHead className="text-right w-48">Số tiền</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {employeeActivityLog.map((activity, index) => {
+                              const activityDate = new Date(activity.date);
+                              return (
+                                <TableRow key={activity.key}>
+                                  <TableCell>{index + 1}</TableCell>
+                                  <TableCell>
+                                    <div className="text-sm">
+                                      <div>{activityDate.toLocaleDateString('vi-VN')}</div>
+                                      <div className="text-muted-foreground">{activityDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className={cn(
+                                      "px-2 py-1 rounded-full text-xs font-semibold",
+                                      activity.type === 'Tạo nợ' ? 'bg-destructive text-destructive-foreground' : 'bg-success text-success-foreground'
+                                    )}>
+                                      {activity.type}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>{activity.customerName}</TableCell>
+                                  <TableCell className="text-right">
+                                    <span className="bg-red-600 text-white px-2 py-1 rounded font-semibold">
+                                      {(activity.amount || 0).toLocaleString('vi-VN')} VNĐ
+                                    </span>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="md:hidden">
+                      <ScrollArea className="h-60 border rounded-md p-2">
+                        <div className="space-y-3">
+                          {employeeActivityLog.map((activity, index) => {
+                            const activityDate = new Date(activity.date);
+                            return (
+                              <Card key={activity.key} className={`border-l-4 ${activity.type === 'Tạo nợ' ? 'border-l-red-500' : 'border-l-green-500'}`}>
+                                <CardContent className="p-3">
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">#{index + 1}</span>
+                                        <span className={cn(
+                                          "px-2 py-1 rounded-full text-xs font-semibold",
+                                          activity.type === 'Tạo nợ' ? 'bg-destructive text-destructive-foreground' : 'bg-success text-success-foreground'
+                                        )}>
+                                          {activity.type}
+                                        </span>
+                                      </div>
+                                      <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
+                                        {(activity.amount || 0).toLocaleString('vi-VN')} VNĐ
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="text-sm">
+                                      <p className="font-medium">{activity.customerName}</p>
+                                      <p className="text-muted-foreground text-xs">
+                                        {activityDate.toLocaleDateString('vi-VN')} {activityDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </>
                 )}
               </div>
             </CardContent>
@@ -825,7 +1030,7 @@ export function EmployeeTab({
 
     {isEditModalOpen && editingEmployee && (
         <Dialog open={isEditModalOpen} onOpenChange={() => { setIsEditModalOpen(false); setEditingEmployee(null); }}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Chỉnh sửa thông tin nhân viên</DialogTitle>
               <DialogDescription>
@@ -833,8 +1038,8 @@ export function EmployeeTab({
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-name" className="text-right">
+              <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-2 md:gap-4">
+                <Label htmlFor="edit-name" className="md:text-right">
                   Tên
                 </Label>
                 <Input
@@ -842,12 +1047,12 @@ export function EmployeeTab({
                   name="name"
                   value={editFormData.name}
                   onChange={handleEditFormChange}
-                  className="col-span-3 bg-card"
+                  className="md:col-span-3 bg-card"
                   required
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-phone" className="text-right">
+              <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-2 md:gap-4">
+                <Label htmlFor="edit-phone" className="md:text-right">
                   Số điện thoại
                 </Label>
                 <Input
@@ -855,15 +1060,15 @@ export function EmployeeTab({
                   name="phone"
                   value={editFormData.phone}
                   onChange={handleEditFormChange}
-                  className="col-span-3 bg-card"
+                  className="md:col-span-3 bg-card"
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => { setIsEditModalOpen(false); setEditingEmployee(null); }}>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => { setIsEditModalOpen(false); setEditingEmployee(null); }} className="w-full sm:w-auto">
                 Hủy
               </Button>
-              <Button onClick={handleSaveEmployeeInfo} className="bg-primary text-primary-foreground">Lưu thay đổi</Button>
+              <Button onClick={handleSaveEmployeeInfo} className="bg-primary text-primary-foreground w-full sm:w-auto">Lưu thay đổi</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -891,7 +1096,7 @@ export function EmployeeTab({
 
       {can_manage && (
         <Dialog open={isReviewEmployeeRequestsDialogOpen} onOpenChange={setIsReviewEmployeeRequestsDialogOpen}>
-            <DialogContent className="sm:max-w-5xl">
+            <DialogContent className="sm:max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Xét duyệt yêu cầu nhân viên ({employeeAccessRequests.length})</DialogTitle>
                     <DialogDescription>
@@ -904,43 +1109,85 @@ export function EmployeeTab({
                     ) : employeeAccessRequests.length === 0 ? (
                         <p className="text-center text-muted-foreground py-4">Không có yêu cầu nhân viên nào đang chờ xử lý.</p>
                     ) : (
-                        <ScrollArea className="max-h-[60vh] no-scrollbar">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Tên</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>SĐT</TableHead>
-                                        <TableHead>Địa chỉ</TableHead>
-                                        <TableHead>Ngày YC</TableHead>
-                                        <TableHead className="text-center">Hành động</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {employeeAccessRequests.map(req => (
-                                        <TableRow key={req.id}>
-                                            <TableCell>{req.fullName}</TableCell>
-                                            <TableCell>{req.email}</TableCell>
-                                            <TableCell>{formatPhoneNumber(req.phone)}</TableCell>
-                                            <TableCell className="text-xs max-w-[150px] truncate" title={req.address || 'N/A'}>{req.address || 'N/A'}</TableCell>
-                                            <TableCell>{new Date(req.requestDate).toLocaleDateString('vi-VN')}</TableCell>
-                                            <TableCell className="text-center space-x-1">
-                                                <Button size="sm" className="bg-success hover:bg-success/90 h-7 px-2" onClick={() => handleApproveEmployeeRequest(req)}>
-                                                    <CheckCircle className="h-4 w-4 mr-1"/>Kích hoạt
-                                                </Button>
-                                                <Button size="sm" variant="destructive" className="h-7 px-2" onClick={() => openRejectEmployeeDialog(req)}>
-                                                    <XCircle className="h-4 w-4 mr-1"/>Từ chối
-                                                </Button>
-                                            </TableCell>
+                        <>
+                          {/* Desktop Table View */}
+                          <div className="hidden md:block">
+                            <ScrollArea className="max-h-[60vh] no-scrollbar">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Tên</TableHead>
+                                            <TableHead>Email</TableHead>
+                                            <TableHead>SĐT</TableHead>
+                                            <TableHead>Địa chỉ</TableHead>
+                                            <TableHead>Ngày YC</TableHead>
+                                            <TableHead className="text-center">Hành động</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {employeeAccessRequests.map(req => (
+                                            <TableRow key={req.id}>
+                                                <TableCell>{req.fullName}</TableCell>
+                                                <TableCell>{req.email}</TableCell>
+                                                <TableCell>{formatPhoneNumber(req.phone)}</TableCell>
+                                                <TableCell className="text-xs max-w-[150px] truncate" title={req.address || 'N/A'}>{req.address || 'N/A'}</TableCell>
+                                                <TableCell>{new Date(req.requestDate).toLocaleDateString('vi-VN')}</TableCell>
+                                                <TableCell className="text-center space-x-1">
+                                                    <Button size="sm" className="bg-success hover:bg-success/90 h-7 px-2" onClick={() => handleApproveEmployeeRequest(req)}>
+                                                        <CheckCircle className="h-4 w-4 mr-1"/>Kích hoạt
+                                                    </Button>
+                                                    <Button size="sm" variant="destructive" className="h-7 px-2" onClick={() => openRejectEmployeeDialog(req)}>
+                                                        <XCircle className="h-4 w-4 mr-1"/>Từ chối
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                          </div>
+
+                          {/* Mobile Card View */}
+                          <div className="md:hidden">
+                            <ScrollArea className="max-h-[60vh]">
+                              <div className="space-y-3">
+                                {employeeAccessRequests.map(req => (
+                                  <Card key={req.id} className="border-l-4 border-l-orange-500">
+                                    <CardContent className="p-4">
+                                      <div className="space-y-3">
+                                        <div>
+                                          <h3 className="font-medium">{req.fullName}</h3>
+                                          <p className="text-sm text-muted-foreground">{req.email}</p>
+                                        </div>
+                                        
+                                        <div className="text-sm space-y-1">
+                                          <p><span className="text-muted-foreground">SĐT:</span> {formatPhoneNumber(req.phone)}</p>
+                                          <p><span className="text-muted-foreground">Địa chỉ:</span> {req.address || 'N/A'}</p>
+                                          <p><span className="text-muted-foreground">Ngày YC:</span> {new Date(req.requestDate).toLocaleDateString('vi-VN')}</p>
+                                        </div>
+
+                                        <div className="flex gap-2 pt-2 border-t">
+                                          <Button size="sm" className="bg-success hover:bg-success/90 flex-1" onClick={() => handleApproveEmployeeRequest(req)}>
+                                            <CheckCircle className="h-4 w-4 mr-1"/>
+                                            Kích hoạt
+                                          </Button>
+                                          <Button size="sm" variant="destructive" className="flex-1" onClick={() => openRejectEmployeeDialog(req)}>
+                                            <XCircle className="h-4 w-4 mr-1"/>
+                                            Từ chối
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        </>
                     )}
                 </div>
                 <DialogFooter className="mt-4">
-                    <Button variant="outline" onClick={() => setIsReviewEmployeeRequestsDialogOpen(false)}>Đóng</Button>
+                    <Button variant="outline" onClick={() => setIsReviewEmployeeRequestsDialogOpen(false)} className="w-full sm:w-auto">Đóng</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -948,7 +1195,7 @@ export function EmployeeTab({
 
       {requestToReject && (
         <Dialog open={!!requestToReject} onOpenChange={() => setRequestToReject(null)}>
-          <DialogContent>
+          <DialogContent className="w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Từ chối yêu cầu của {requestToReject.fullName}?</DialogTitle>
               <DialogDescription>
@@ -961,9 +1208,9 @@ export function EmployeeTab({
               placeholder="Nhập lý do từ chối (tùy chọn)..."
               className="min-h-[100px]"
             />
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setRequestToReject(null)}>Hủy</Button>
-              <Button variant="destructive" onClick={handleConfirmRejectEmployeeRequest}>Xác nhận từ chối</Button>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setRequestToReject(null)} className="w-full sm:w-auto">Hủy</Button>
+              <Button variant="destructive" onClick={handleConfirmRejectEmployeeRequest} className="w-full sm:w-auto">Xác nhận từ chối</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

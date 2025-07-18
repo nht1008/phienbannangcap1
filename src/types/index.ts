@@ -72,9 +72,12 @@ export interface Invoice {
   customerName: string;
   items: InvoiceCartItem[];
   total: number;
+  originalSubtotal?: number; // Tổng tiền gốc trước khi áp dụng ưu đãi và đổi điểm
   date: string; 
   paymentMethod: string;
   discount?: number; 
+  redeemedPoints?: number; // Số điểm đã đổi
+  redeemedPointsValue?: number; // Giá trị VND của điểm đã đổi
   pointsEarned?: number;
   amountPaid?: number; 
   debtAmount?: number; 
@@ -87,7 +90,7 @@ export interface OrderItem extends InvoiceCartItem { // Similar to InvoiceCartIt
   // Any order-specific item properties can be added here
 }
 
-export type OrderStatus = 'Chờ xác nhận' | 'Hoàn thành' | 'Đã hủy' | 'Yêu cầu hủy';
+export type OrderStatus = 'Chờ xác nhận' | 'Chờ thanh toán' | 'Hoàn thành' | 'Đã hủy' | 'Yêu cầu hủy';
 
 
 export interface Order {
@@ -105,6 +108,14 @@ export interface Order {
   overallDiscount?: number; // Discount on the entire order
   paymentMethod: string; // e.g., 'COD', 'Bank Transfer', 'Online'
   orderStatus: OrderStatus;
+  paymentStatus?: 'Chờ thanh toán' | 'Đã thanh toán' | 'Thất bại'; // Payment status for tracking
+  paymentDetails?: { // Payment details from SePay
+    method: string;
+    amount: number;
+    referenceCode?: string;
+    paidAt: string;
+    autoConfirmed?: boolean;
+  };
   internalNotes?: string; // Shop notes
   orderDate: string; // ISO string
   shipDate?: string; // ISO string

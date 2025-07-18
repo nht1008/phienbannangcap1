@@ -1,6 +1,6 @@
 import type { Customer } from '@/types';
 
-export const POINT_CONVERSION_RATE = 1 / 1000; // 1 point per 1000 VND
+export const POINT_CONVERSION_RATE = 1 / 1000; // 1 point per 1000 VND (1000 VND = 1 điểm)
 
 export const TIER_POINT_MULTIPLIERS: Record<string, number> = {
   'Vô danh': 1,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import type { Product, ProductOptionType } from '@/types';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import { normalizeStringForSearch } from '@/lib/utils';
 import { Label } from '../ui/label';
 import type { Invoice } from '@/types';
 import { ProductThumbnailUpload } from '@/components/products/ProductThumbnailUpload';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 interface InventoryTabProps {
@@ -63,8 +64,9 @@ export function InventoryTab({
   storefrontProductIds,
   onAddToStorefront,
   onRemoveFromStorefront,
-  onUpdateProduct
+  onUpdateProduct,
 }: InventoryTabProps) {
+  const isMobile = useIsMobile();
   const [isOptionsDialogOpen, setIsOptionsDialogOpen] = useState(false);
   const [currentOptionType, setCurrentOptionType] = useState<ProductOptionType | null>(null);
   const [newOptionName, setNewOptionName] = useState('');
@@ -481,7 +483,8 @@ export function InventoryTab({
           </div>
         </CardHeader>
         <CardContent className="p-0 md:p-2 lg:p-4">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

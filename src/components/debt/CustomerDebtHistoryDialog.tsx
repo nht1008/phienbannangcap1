@@ -177,10 +177,10 @@ export function CustomerDebtHistoryDialog({
                           {entry.employeeName}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {entry.action === 'PAYMENT' ? (entry.notes || '-') : '-'}
-                          {entry.action === 'PAYMENT' && entry.invoiceId && (
+                          {entry.notes || '-'}
+                          {entry.invoiceId && (
                             <div className="text-xs text-muted-foreground mt-1">
-                              HĐ: {entry.invoiceId.slice(-8)}
+                              HĐ: {entry.invoiceId}
                             </div>
                           )}
                         </TableCell>

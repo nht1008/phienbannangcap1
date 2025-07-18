@@ -42,6 +42,7 @@ import { vi } from 'date-fns/locale';
 import { TimeRangeSlider } from '@/components/ui/time-range-slider';
 import { SmartSearchBar, SearchHighlight } from '@/components/shared/SmartSearchBar';
 import { useInvoiceSearch } from '@/hooks/use-smart-search';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface InvoiceTabProps {
   invoices: Invoice[];
@@ -70,6 +71,7 @@ type ReturnItemDetail = {
 
 export function InvoiceTab({ invoices, onProcessInvoiceCancellationOrReturn, filter: filterProp, onFilterChange, hasFullAccessRights }: InvoiceTabProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [selectedInvoiceDetails, setSelectedInvoiceDetails] = useState<Invoice | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
 
@@ -298,7 +300,7 @@ export function InvoiceTab({ invoices, onProcessInvoiceCancellationOrReturn, fil
                       defaultMonth={filterProp.startDate || new Date()}
                       selected={{ from: filterProp.startDate || undefined, to: filterProp.endDate || undefined }}
                       onSelect={handleDateChange}
-                      numberOfMonths={2}
+                      numberOfMonths={isMobile ? 1 : 2}
                       locale={vi}
                     />
                   </PopoverContent>
@@ -338,74 +340,138 @@ export function InvoiceTab({ invoices, onProcessInvoiceCancellationOrReturn, fil
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">STT</TableHead>
-                    <TableHead>ID HĐ</TableHead>
-                    <TableHead>Khách hàng</TableHead>
-                    <TableHead>Thời gian</TableHead>
-                    <TableHead className="text-green-600">Đã thanh toán</TableHead>
-                    <TableHead className="text-[hsl(var(--destructive))]">Giảm giá</TableHead>
-                    <TableHead className="text-[hsl(var(--destructive))]">Tiền nợ</TableHead>
-                    <TableHead>Thao tác</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredInvoices.map((invoice, index) => {
-                    const hasDebt = invoice.debtAmount && invoice.debtAmount > 0;
-                    const displayedAmount = (!hasDebt ? invoice.total : (invoice.amountPaid ?? 0));
-                    const isCashPayment = invoice.paymentMethod === 'Tiền mặt';
-                    const invoiceDate = new Date(invoice.date);
-                    const totalItemDiscounts = invoice.items.reduce((sum: number, item: InvoiceCartItem) => sum + (item.itemDiscount || 0), 0);
-                    return (
-                      <TableRow key={invoice.id}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>{invoice.id}</TableCell>
-                        <TableCell>{invoice.customerName}</TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div>{invoiceDate.toLocaleDateString('vi-VN')}</div>
-                            <div className="text-muted-foreground">{invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="bg-green-600 text-white px-2 py-1 rounded">
-                            {displayedAmount.toLocaleString('vi-VN')} VNĐ
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="bg-red-600 text-white px-2 py-1 rounded">
-                            {totalItemDiscounts.toLocaleString('vi-VN')} VNĐ
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="bg-red-600 text-white px-2 py-1 rounded">
-                            {(invoice.debtAmount ?? 0).toLocaleString('vi-VN')} VNĐ
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="link" className="p-0 h-auto text-primary hover:text-primary/80" onClick={() => setSelectedInvoiceDetails(invoice)}>
-                            <Eye className="h-4 w-4 mr-1" />
-                          </Button>
-                          {hasFullAccessRights && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/80" onClick={() => openDeleteConfirmDialog(invoice)} title="Xóa hóa đơn">
-                              <Trash2 className="h-4 w-4" />
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">STT</TableHead>
+                      <TableHead>ID HĐ</TableHead>
+                      <TableHead>Khách hàng</TableHead>
+                      <TableHead>Thời gian</TableHead>
+                      <TableHead className="text-green-600">Đã thanh toán</TableHead>
+                      <TableHead className="text-[hsl(var(--destructive))]">Giảm giá</TableHead>
+                      <TableHead className="text-[hsl(var(--destructive))]">Tiền nợ</TableHead>
+                      <TableHead>Thao tác</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInvoices.map((invoice, index) => {
+                      const hasDebt = invoice.debtAmount && invoice.debtAmount > 0;
+                      const displayedAmount = (!hasDebt ? invoice.total : (invoice.amountPaid ?? 0));
+                      const isCashPayment = invoice.paymentMethod === 'Tiền mặt';
+                      const invoiceDate = new Date(invoice.date);
+                      const totalItemDiscounts = invoice.items.reduce((sum: number, item: InvoiceCartItem) => sum + (item.itemDiscount || 0), 0);
+                      return (
+                        <TableRow key={invoice.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell><SearchHighlight text={invoice.id} searchQuery={searchQuery} /></TableCell>
+                          <TableCell><SearchHighlight text={invoice.customerName} searchQuery={searchQuery} /></TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <div>{invoiceDate.toLocaleDateString('vi-VN')}</div>
+                              <div className="text-muted-foreground">{invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="bg-green-600 text-white px-2 py-1 rounded">
+                              {displayedAmount.toLocaleString('vi-VN')} VNĐ
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="bg-red-600 text-white px-2 py-1 rounded">
+                              {totalItemDiscounts.toLocaleString('vi-VN')} VNĐ
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="bg-red-600 text-white px-2 py-1 rounded">
+                              {(invoice.debtAmount ?? 0).toLocaleString('vi-VN')} VNĐ
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="link" className="p-0 h-auto text-primary hover:text-primary/80" onClick={() => setSelectedInvoiceDetails(invoice)}>
+                              <Eye className="h-4 w-4 mr-1" />
                             </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                            {hasFullAccessRights && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/80" onClick={() => openDeleteConfirmDialog(invoice)} title="Xóa hóa đơn">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {filteredInvoices.map((invoice, index) => {
+                  const hasDebt = invoice.debtAmount && invoice.debtAmount > 0;
+                  const displayedAmount = (!hasDebt ? invoice.total : (invoice.amountPaid ?? 0));
+                  const invoiceDate = new Date(invoice.date);
+                  const totalItemDiscounts = invoice.items.reduce((sum: number, item: InvoiceCartItem) => sum + (item.itemDiscount || 0), 0);
+                  return (
+                    <Card key={invoice.id} className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-medium text-sm">
+                              <SearchHighlight text={`#${index + 1} - ${invoice.id}`} searchQuery={searchQuery} />
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              <SearchHighlight text={invoice.customerName} searchQuery={searchQuery} />
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="outline" size="sm" onClick={() => setSelectedInvoiceDetails(invoice)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {hasFullAccessRights && (
+                              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive/80" onClick={() => openDeleteConfirmDialog(invoice)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-xs text-muted-foreground">
+                          {invoiceDate.toLocaleDateString('vi-VN')} - {invoiceDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="text-center">
+                            <div className="text-muted-foreground mb-1">Đã thanh toán</div>
+                            <span className="bg-green-600 text-white px-2 py-1 rounded text-xs">
+                              {displayedAmount.toLocaleString('vi-VN')}đ
+                            </span>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-muted-foreground mb-1">Giảm giá</div>
+                            <span className="bg-red-600 text-white px-2 py-1 rounded text-xs">
+                              {totalItemDiscounts.toLocaleString('vi-VN')}đ
+                            </span>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-muted-foreground mb-1">Tiền nợ</div>
+                            <span className="bg-red-600 text-white px-2 py-1 rounded text-xs">
+                              {(invoice.debtAmount ?? 0).toLocaleString('vi-VN')}đ
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
           )}
 
           {selectedInvoiceDetails && (
             <Dialog open={!!selectedInvoiceDetails} onOpenChange={(open) => !open && setSelectedInvoiceDetails(null)}>
-              <DialogContent className="sm:max-w-3xl">
+              <DialogContent className={`${isMobile ? 'w-[95vw] max-h-[90vh]' : 'sm:max-w-3xl'}`}>
                 <DialogHeader>
                   <DialogTitle className="text-2xl">Chi tiết hóa đơn #{selectedInvoiceDetails.id.substring(0,6)}...</DialogTitle>
                    <DialogDescription asChild>
@@ -521,7 +587,7 @@ export function InvoiceTab({ invoices, onProcessInvoiceCancellationOrReturn, fil
 
       {isReturnItemsDialogOpen && currentInvoiceForReturnDialog && (
         <Dialog open={isReturnItemsDialogOpen} onOpenChange={setIsReturnItemsDialogOpen}>
-          <DialogContent className="sm:max-w-5xl">
+          <DialogContent className={`${isMobile ? 'w-[95vw] max-h-[90vh]' : 'sm:max-w-5xl'}`}>
             <DialogHeader>
               <DialogTitle>Hoàn trả sản phẩm cho HĐ #{currentInvoiceForReturnDialog.id.substring(0,6)}</DialogTitle>
               <DialogDescription>Chọn sản phẩm và số lượng muốn hoàn trả. Các sản phẩm sẽ được cộng lại vào kho.</DialogDescription>

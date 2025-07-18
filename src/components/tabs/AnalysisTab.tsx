@@ -22,6 +22,7 @@ import { SlowSellingProductsTable } from '../analysis/SlowSellingProductsTable';
 import { KpiCard } from '../analysis/KpiCard';
 import { SlowMovingFilter } from '../analysis/SlowMovingFilter';
 import { TopSellingFilter } from '../analysis/TopSellingFilter';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AnalysisTabProps {
   invoices: Invoice[];
@@ -34,6 +35,7 @@ interface AnalysisTabProps {
 }
 
 export default function AnalysisTab({ invoices, inventory, disposalLogEntries, customerInsights, filter, onFilterChange, isLoading }: AnalysisTabProps) {
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [activeTab, setActiveTab] = useState('revenue');
   const [slowMovingDateRange, setSlowMovingDateRange] = useState<DateRange | undefined>({
@@ -391,16 +393,16 @@ export default function AnalysisTab({ invoices, inventory, disposalLogEntries, c
                     defaultMonth={filter.startDate || new Date()}
                     selected={{ from: filter.startDate || undefined, to: filter.endDate || undefined }}
                     onSelect={handleDateChange}
-                    numberOfMonths={2}
+                    numberOfMonths={isMobile ? 1 : 2}
                     locale={vi}
                   />
                 </PopoverContent>
               </Popover>
-              <div className="flex gap-2">
-                <Button onClick={() => setDateRangePreset('today')} variant="outline" size="sm">Hôm nay</Button>
-                <Button onClick={() => setDateRangePreset('last_7_days')} variant="outline" size="sm">7 ngày</Button>
-                <Button onClick={() => setDateRangePreset('last_30_days')} variant="outline" size="sm">30 ngày</Button>
-                <Button onClick={() => setDateRangePreset('this_month')} variant="outline" size="sm">Tháng này</Button>
+              <div className="grid grid-cols-2 md:flex gap-2">
+                <Button onClick={() => setDateRangePreset('today')} variant="outline" size="sm" className="text-xs md:text-sm">Hôm nay</Button>
+                <Button onClick={() => setDateRangePreset('last_7_days')} variant="outline" size="sm" className="text-xs md:text-sm">7 ngày</Button>
+                <Button onClick={() => setDateRangePreset('last_30_days')} variant="outline" size="sm" className="text-xs md:text-sm">30 ngày</Button>
+                <Button onClick={() => setDateRangePreset('this_month')} variant="outline" size="sm" className="text-xs md:text-sm">Tháng này</Button>
               </div>
             </div>
           </div>

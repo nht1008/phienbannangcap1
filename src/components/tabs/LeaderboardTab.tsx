@@ -607,40 +607,79 @@ export function LeaderboardTab({ customers, invoices, debts, isCurrentUserCustom
                       <span className="md:hidden">VIP</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] md:max-w-2xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader className="text-left">
-                      <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
-                        <Crown className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />
+                  <DialogContent className="sm:max-w-[425px] md:max-w-3xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader className="text-left pb-4">
+                      <DialogTitle className="flex items-center gap-3 text-xl md:text-2xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
+                        <Crown className="h-6 w-6 md:h-8 md:w-8 text-yellow-500 animate-pulse" />
                         Hệ Thống Hạng VIP
+                        <Crown className="h-6 w-6 md:h-8 md:w-8 text-yellow-500 animate-pulse" />
                       </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="text-sm md:text-base text-muted-foreground">
-                        Khách hàng được xếp hạng dựa trên tổng chi tiêu tích lũy:
+                      <div className="mt-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                        <p className="text-sm md:text-base text-slate-700 font-medium">
+                          🌟 Khách hàng được xếp hạng dựa trên tổng chi tiêu tích lũy
+                        </p>
                       </div>
-                      <div className="grid gap-3">
+                    </DialogHeader>
+                    <div className="space-y-6">
+                      <div className="grid gap-4">
                         {Object.entries(TIERS).map(([tierName, tierInfo]) => (
-                          <div key={tierName} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div className={cn(
-                                "px-3 py-1 rounded-full text-xs md:text-sm font-medium border",
-                                getVipTierStyling(tierName)
-                              )}>
-                                {tierName}
+                          <div key={tierName} className={cn(
+                            "relative p-4 border-2 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg",
+                            tierName === 'Đại gia' ? 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300 shadow-red-100' :
+                            tierName === 'Phú ông' ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-300 shadow-purple-100' :
+                            tierName === 'Thương gia' ? 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-300 shadow-blue-100' :
+                            tierName === 'Chủ đồn điền' ? 'bg-gradient-to-r from-green-50 to-lime-50 border-green-300 shadow-green-100' :
+                            tierName === 'Nông dân' ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-300 shadow-yellow-100' :
+                            tierName === 'Đầy tớ' ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-300 shadow-gray-100' :
+                            'bg-gradient-to-r from-stone-50 to-neutral-50 border-stone-300 shadow-stone-100'
+                          )}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className={cn(
+                                  "px-4 py-2 rounded-full text-sm md:text-base font-bold border-2 shadow-md",
+                                  getVipTierStyling(tierName)
+                                )}>
+                                  {tierName}
+                                </div>
+                                <div className="flex flex-col">
+                                  <div className="text-lg md:text-xl font-bold text-slate-800">
+                                    {tierName === 'Vô danh' ? '0₫' : 
+                                     tierName === 'Đầy tớ' ? '5,000,000₫' :
+                                     tierName === 'Nông dân' ? '10,000,000₫' :
+                                     tierName === 'Chủ đồn điền' ? '20,000,000₫' :
+                                     tierName === 'Thương gia' ? '40,000,000₫' :
+                                     tierName === 'Phú ông' ? '70,000,000₫' :
+                                     tierName === 'Đại gia' ? '100,000,000₫' : ''}
+                                  </div>
+                                  <div className="text-xs md:text-sm text-slate-600 font-medium">
+                                    Chi tiêu tối thiểu
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-sm md:text-base font-semibold">
-                                {tierName === 'Vô danh' ? '0₫' : 
-                                 tierName === 'Đầy tớ' ? '5,000,000₫' :
-                                 tierName === 'Nông dân' ? '10,000,000₫' :
-                                 tierName === 'Chủ đồn điền' ? '20,000,000₫' :
-                                 tierName === 'Thương gia' ? '40,000,000₫' :
-                                 tierName === 'Phú ông' ? '70,000,000₫' :
-                                 tierName === 'Đại gia' ? '100,000,000₫' : ''}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Hệ số điểm: x{TIER_POINT_MULTIPLIERS[tierName] || 1}
+                              <div className="text-right space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs md:text-sm text-slate-600">Hệ số điểm:</span>
+                                  <span className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                    x{TIER_POINT_MULTIPLIERS[tierName] || 1}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs md:text-sm text-slate-600">Ưu đãi:</span>
+                                  <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                    {tierInfo.discount === 0 ? '0%' : `${Math.round(tierInfo.discount * 100)}%`}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs md:text-sm text-slate-600">Giới hạn:</span>
+                                  <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                    {tierInfo.limit === 0 ? 'Không có' : 
+                                     tierInfo.limit === Infinity ? 'Không giới hạn' : 
+                                     `${(tierInfo.limit / 1000).toLocaleString('vi-VN')}K`}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1 max-w-48 text-right">
+                                  {tierInfo.usageLimit}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -658,47 +697,97 @@ export function LeaderboardTab({ customers, invoices, debts, isCurrentUserCustom
                       <span className="md:hidden">Điểm</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] md:max-w-2xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader className="text-left">
-                      <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
-                        <CoinsIcon className="h-5 w-5 md:h-6 md:w-6 text-green-500" />
+                  <DialogContent className="sm:max-w-[425px] md:max-w-3xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader className="text-left pb-4">
+                      <DialogTitle className="flex items-center gap-3 text-xl md:text-2xl font-bold bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text text-transparent">
+                        <CoinsIcon className="h-6 w-6 md:h-8 md:w-8 text-green-500 animate-bounce" />
                         Hệ Thống Điểm Thưởng
+                        <CoinsIcon className="h-6 w-6 md:h-8 md:w-8 text-green-500 animate-bounce" />
                       </DialogTitle>
+                      <div className="mt-2 p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                        <p className="text-sm md:text-base text-slate-700 font-medium">
+                          💰 Tích điểm và đổi phần thưởng hấp dẫn từ mỗi đơn hàng!
+                        </p>
+                      </div>
                     </DialogHeader>
                     <div className="space-y-6">
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-semibold text-sm md:text-base mb-2">📈 Cách Tích Điểm</h4>
-                          <div className="text-sm md:text-base text-muted-foreground">
-                            • Mỗi <span className="font-medium">{formatCurrencyForUser(POINT_CONVERSION_RATE)}</span> chi tiêu = 1 điểm
-                            <br />• Điểm được nhân với hệ số hạng VIP
+                      <div className="space-y-6">
+                        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-xl border border-amber-200">
+                          <h4 className="font-bold text-lg md:text-xl mb-3 flex items-center gap-2 text-amber-700">
+                            📈 Cách Tích Điểm
+                            <span className="text-xs bg-amber-200 px-2 py-1 rounded-full">HOT</span>
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm border">
+                              <span className="text-2xl">💳</span>
+                              <div>
+                                <div className="font-bold text-green-600 text-lg">
+                                  1,000 VNĐ = 1 điểm
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  Tích điểm từ mọi giao dịch
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm border">
+                              <span className="text-2xl">⭐</span>
+                              <div>
+                                <div className="font-bold text-purple-600">
+                                  Hệ số nhân theo hạng VIP
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  Hạng cao nhận điểm nhiều hơn
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                         
-                        <Separator />
-                        
-                        <div>
-                          <h4 className="font-semibold text-sm md:text-base mb-3">🎁 Quy Đổi Điểm</h4>
-                          <div className="grid gap-3">
+                        <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-4 rounded-xl border border-pink-200">
+                          <h4 className="font-bold text-lg md:text-xl mb-4 flex items-center gap-2 text-purple-700">
+                            🎁 Quy Đổi Điểm
+                            <span className="text-xs bg-pink-200 px-2 py-1 rounded-full">NGON</span>
+                          </h4>
+                          <div className="grid gap-4">
                             {REDEMPTION_OPTIONS.map((option, index) => (
-                              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                                <div className="flex items-center gap-3">
-                                  <span className="text-lg">🎁</span>
+                              <div key={index} className={cn(
+                                "flex items-center justify-between p-4 rounded-xl shadow-md border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg",
+                                index === 0 ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' :
+                                index === 1 ? 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-300' :
+                                index === 2 ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-300' :
+                                'bg-gradient-to-r from-orange-50 to-red-50 border-orange-300'
+                              )}>
+                                <div className="flex items-center gap-4">
+                                  <div className={cn(
+                                    "text-3xl p-2 rounded-full",
+                                    index === 0 ? 'bg-green-100' :
+                                    index === 1 ? 'bg-blue-100' :
+                                    index === 2 ? 'bg-purple-100' :
+                                    'bg-orange-100'
+                                  )}>
+                                    {index === 0 ? '�' : index === 1 ? '💎' : index === 2 ? '👑' : '🏆'}
+                                  </div>
                                   <div>
-                                    <div className="font-medium text-sm md:text-base">
-                                      Phiếu giảm giá {formatCurrencyForUser(option.value)}
+                                    <div className="font-bold text-lg md:text-xl text-slate-800">
+                                      Phiếu giảm {(option.value / 1000).toLocaleString('vi-VN')}K
                                     </div>
-                                    <div className="text-xs md:text-sm text-muted-foreground">
-                                      Áp dụng cho đơn từ {formatCurrencyForUser(option.minOrder)}
+                                    <div className="text-sm text-slate-600">
+                                      Cho đơn từ {(option.minOrder / 1000).toLocaleString('vi-VN')}K
                                     </div>
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <div className="font-semibold text-sm md:text-base text-primary">
+                                  <div className={cn(
+                                    "font-bold text-lg md:text-xl px-4 py-2 rounded-full text-white shadow-md",
+                                    index === 0 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                                    index === 1 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
+                                    index === 2 ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
+                                    'bg-gradient-to-r from-orange-500 to-red-500'
+                                  )}>
                                     {option.points.toLocaleString('vi-VN')} điểm
                                   </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ≈ {formatCurrencyForUser(option.value)}
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    Tỷ lệ: {option.points}đ → {(option.value/1000)}K
                                   </div>
                                 </div>
                               </div>

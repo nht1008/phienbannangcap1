@@ -1,13 +1,16 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
+import { ref, query, orderByChild, equalTo, onValue } from 'firebase/database'
+import { db } from '@/lib/firebase'
+import type { DebtHistoryEntry } from '@/lib/debt-history'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Debt, Invoice, Customer, AuthUser } from '@/types'
 import { formatCompactCurrency } from '@/lib/utils'
-import { CalendarDays, CreditCard, Receipt, Wallet } from 'lucide-react'
+import { CalendarDays, CreditCard, Receipt, Wallet, Calendar, DollarSign, FileText, History } from 'lucide-react'
 
 interface CustomerDebtTabProps {
   debts: Debt[]
@@ -42,10 +45,12 @@ export default function CustomerDebtTab({
     }
   })
 
-  const [selectedDebtHistory, setSelectedDebtHistory] = useState<DebtHistoryItem[] | null>(null)
+  const [selectedDebtHistory, setSelectedDebtHistory] = useState<DebtHistoryEntry[] | null>(null)
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null)
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [qrPaymentDebt, setQrPaymentDebt] = useState<Debt | null>(null)
   const [isQrPaymentOpen, setIsQrPaymentOpen] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
 
   // Filter debts for current customer
   const customerDebts = useMemo(() => {
@@ -106,7 +111,9 @@ export default function CustomerDebtTab({
       })
     }
 
-    const filteredDebts = debts.filter(debt => debt.customerId === currentUser.uid)
+    const filteredDebts = debts.filter(debt => 
+      debt.customerId === currentUser.uid && debt.remainingAmount > 0
+    )
     
     console.log('📊 Filter Results:', {
       searchingForCustomerId: currentUser.uid,
@@ -122,55 +129,72 @@ export default function CustomerDebtTab({
     return customerDebts.reduce((sum, debt) => sum + debt.remainingAmount, 0)
   }, [customerDebts])
 
-  const createDebtHistory = (debt: Debt): DebtHistoryItem[] => {
-    const history: DebtHistoryItem[] = []
+  const totalPaidDebts = useMemo(() => {
+    return debts.filter(debt => 
+      debt.customerId === currentUser?.uid && debt.remainingAmount === 0
+    ).length
+  }, [debts, currentUser])
+
+  const totalDebtsCount = useMemo(() => {
+    return debts.filter(debt => debt.customerId === currentUser?.uid).length
+  }, [debts, currentUser])
+
+  const handleViewAllHistory = () => {
+    if (!currentUser) return;
     
-    // Find related invoice
-    const relatedInvoice = invoices.find(invoice => 
-      invoice.customerId === debt.customerId && 
-      Math.abs(new Date(invoice.date).getTime() - new Date(debt.date).getTime()) < 24 * 60 * 60 * 1000
-    )
+    setSelectedDebtId("Tất cả")
+    setSelectedCustomerId(currentUser.uid)
+    setIsLoadingHistory(true)
+    
+    // Query debt history from Firebase for all debts of current customer
+    const historyQuery = query(
+      ref(db, 'debtHistory'),
+      orderByChild('customerId'),
+      equalTo(currentUser.uid)
+    );
 
-    // Add debt creation
-    history.push({
-      id: `debt-${debt.id}`,
-      type: 'debt',
-      date: debt.date,
-      amount: debt.originalAmount,
-      description: relatedInvoice 
-        ? `Tạo nợ từ hóa đơn #${relatedInvoice.id.slice(-6).toUpperCase()}`
-        : 'Tạo công nợ',
-      remainingAmount: debt.originalAmount,
-      invoiceId: relatedInvoice?.id
-    })
-
-    // Add payments
-    const payments = Array.isArray(debt.payments) ? debt.payments : [];
-    payments.forEach((payment, index) => {
-      const remainingAfterPayment = debt.originalAmount - payments.slice(0, index + 1).reduce((sum, p) => sum + p.amountPaid, 0)
-      history.push({
-        id: `payment-${debt.id}-${index}`,
-        type: 'payment',
-        date: payment.paymentDate,
-        amount: payment.amountPaid,
-        description: payment.notes || 'Thanh toán công nợ',
-        remainingAmount: remainingAfterPayment
-      })
-    })
-
-    return history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-  }
-
-  const handleViewHistory = (debt: Debt) => {
-    const history = createDebtHistory(debt)
-    setSelectedDebtHistory(history)
-    setSelectedDebtId(debt.id)
+    onValue(historyQuery, (snapshot) => {
+      const data = snapshot.val();
+      const historyArray: DebtHistoryEntry[] = data 
+        ? Object.keys(data).map(key => ({ id: key, ...data[key] }))
+        : [];
+      
+      // Sắp xếp theo thời gian giảm dần (mới nhất trước)
+      historyArray.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setSelectedDebtHistory(historyArray);
+      setIsLoadingHistory(false);
+    }, (error) => {
+      console.error("Error fetching debt history:", error);
+      setIsLoadingHistory(false);
+    });
   }
 
   const handleQRPayment = (debt: Debt) => {
     setQrPaymentDebt(debt)
     setIsQrPaymentOpen(true)
   }
+
+  const getActionBadge = (action: DebtHistoryEntry['action']) => {
+    switch (action) {
+      case 'CREATE_DEBT':
+        return <Badge variant="destructive"><FileText className="w-3 h-3 mr-1" />Tạo nợ</Badge>;
+      case 'PAYMENT':
+        return <Badge className="bg-green-600 text-white"><DollarSign className="w-3 h-3 mr-1" />Thanh toán</Badge>;
+      default:
+        return <Badge variant="outline">{action}</Badge>;
+    }
+  };
+
+  const getAmountDisplay = (entry: DebtHistoryEntry) => {
+    const isNegative = entry.action === 'PAYMENT';
+    const backgroundClass = isNegative ? 'bg-green-600' : 'bg-red-600';
+
+    return (
+      <span className={`font-medium text-white px-2 py-1 rounded ${backgroundClass}`}>
+        {isNegative ? '-' : '+'}{entry.amount.toLocaleString('vi-VN')} VNĐ
+      </span>
+    );
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {
@@ -196,51 +220,29 @@ export default function CustomerDebtTab({
 
   return (
     <div className="space-y-6">
-      {/* Summary Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wallet className="h-5 w-5" />
-            Tổng quan công nợ
-          </CardTitle>
-          <CardDescription>
-            Thông tin tổng hợp về công nợ hiện tại của bạn
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">
-                {customerDebts.length}
-              </div>
-              <div className="text-sm text-blue-600">Tổng khoản nợ</div>
-            </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">
-                {formatCompactCurrency(totalDebt)}
-              </div>
-              <div className="text-sm text-red-600">Tổng nợ</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
-                {customerDebts.filter(debt => debt.remainingAmount === 0).length}
-              </div>
-              <div className="text-sm text-green-600">Đã thanh toán</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Debt List */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Danh sách công nợ
-          </CardTitle>
-          <CardDescription>
-            Chi tiết từng khoản nợ và thanh toán qua QR Code
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Danh sách công nợ
+              </CardTitle>
+              <CardDescription>
+                Chi tiết từng khoản nợ và thanh toán
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleViewAllHistory}
+              className="flex items-center gap-2"
+            >
+              <History className="h-4 w-4" />
+              Lịch sử
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {customerDebts.length === 0 ? (
@@ -251,22 +253,37 @@ export default function CustomerDebtTab({
           ) : (
             <div className="space-y-4">
               {customerDebts.map((debt) => (
-                <Card key={debt.id} className="border">
+                <Card key={debt.id} className="border bg-red-50 border-red-200">
                   <CardContent className="p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold">
-                            Mã nợ: #{debt.id.slice(-6).toUpperCase()}
+                            Mã nợ: {debt.id.slice(-8)}
                           </h3>
-                          <Badge variant={debt.remainingAmount === 0 ? "secondary" : "destructive"}>
-                            {debt.remainingAmount === 0 ? "Đã thanh toán" : "Chưa thanh toán"}
+                          <Badge variant="destructive">
+                            Chưa thanh toán
                           </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-1">
                           <CalendarDays className="h-4 w-4" />
                           {formatDate(debt.date)}
                         </div>
+                        {debt.invoiceId && (
+                          <div className="text-sm text-muted-foreground">
+                            HĐ: <span 
+                              className="text-blue-500 cursor-pointer hover:underline" 
+                              onClick={() => {
+                                if (typeof window !== 'undefined' && navigator.clipboard) {
+                                  navigator.clipboard.writeText(debt.invoiceId!);
+                                }
+                              }}
+                              title="Click để copy ID hóa đơn"
+                            >
+                              {debt.invoiceId}
+                            </span>
+                          </div>
+                        )}
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">Số tiền gốc:</span>
@@ -274,30 +291,20 @@ export default function CustomerDebtTab({
                           </div>
                           <div>
                             <span className="text-muted-foreground">Còn lại:</span>
-                            <div className={`font-semibold ${debt.remainingAmount === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <div className="font-semibold text-red-600">
                               {formatCompactCurrency(debt.remainingAmount)}
                             </div>
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col gap-2">
+                      <div className="flex justify-end">
                         <Button
-                          variant="outline"
                           size="sm"
-                          onClick={() => handleViewHistory(debt)}
-                          className="w-full sm:w-auto"
+                          onClick={() => handleQRPayment(debt)}
+                          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                         >
-                          Xem lịch sử
+                          💳 Thanh toán
                         </Button>
-                        {debt.remainingAmount > 0 && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleQRPayment(debt)}
-                            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
-                          >
-                            💳 Thanh toán qua QR
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -310,48 +317,83 @@ export default function CustomerDebtTab({
 
       {/* Debt History Dialog */}
       <Dialog open={selectedDebtHistory !== null} onOpenChange={() => setSelectedDebtHistory(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Lịch sử công nợ #{selectedDebtId?.slice(-6).toUpperCase()}
+              {selectedDebtId === "Tất cả" ? "Tất cả lịch sử công nợ" : `Lịch sử công nợ ${selectedDebtId}`}
             </DialogTitle>
             <DialogDescription asChild>
-              <div>Chi tiết quá trình tạo nợ và thanh toán</div>
+              <div>
+                {selectedDebtId === "Tất cả" ? (
+                  "Chi tiết quá trình tạo nợ và thanh toán"
+                ) : (
+                  "Chi tiết quá trình tạo nợ và thanh toán"
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {selectedDebtHistory?.map((item, index) => (
-              <Card key={item.id} className={`border ${item.type === 'debt' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={item.type === 'debt' ? 'destructive' : 'secondary'}>
-                          {item.type === 'debt' ? 'Tạo nợ' : 'Thanh toán'}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDate(item.date)}
-                        </span>
-                      </div>
-                      <div className="text-sm">
-                        {item.description}
-                      </div>
-                      {item.remainingAmount !== undefined && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Còn lại sau giao dịch: </span>
-                          <span className={`font-semibold ${item.remainingAmount === 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCompactCurrency(item.remainingAmount)}
-                          </span>
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center h-40">
+                <p>Đang tải lịch sử...</p>
+              </div>
+            ) : selectedDebtHistory && selectedDebtHistory.length > 0 ? (
+              selectedDebtHistory.map((entry, index) => {
+                const entryDate = new Date(entry.date);
+                const isFirstEntry = index === 0; // Dòng mới nhất
+                const displayDebt = isFirstEntry ? totalDebt : entry.remainingDebt;
+                return (
+                  <Card key={entry.id} className={`border ${entry.action === 'CREATE_DEBT' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            {getActionBadge(entry.action)}
+                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {entryDate.toLocaleDateString('vi-VN')} {entryDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="text-sm">
+                            {entry.invoiceId && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                HĐ: <span 
+                                  className="text-blue-500 cursor-pointer hover:underline" 
+                                  onClick={() => {
+                                    if (typeof window !== 'undefined' && navigator.clipboard) {
+                                      navigator.clipboard.writeText(entry.invoiceId!);
+                                    }
+                                  }}
+                                  title="Click để copy ID hóa đơn"
+                                >
+                                  {entry.invoiceId}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Tổng còn nợ: </span>
+                            <span className={`font-semibold ${displayDebt === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {displayDebt.toLocaleString('vi-VN')} VNĐ
+                            </span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Nhân viên: {entry.employeeName}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    <div className={`text-right font-semibold ${item.type === 'debt' ? 'text-red-600' : 'text-green-600'}`}>
-                      {item.type === 'debt' ? '+' : '-'}{formatCompactCurrency(item.amount)}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                        <div className="text-right">
+                          {getAmountDisplay(entry)}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Không có lịch sử công nợ.
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -364,7 +406,7 @@ export default function CustomerDebtTab({
               💳 Thanh toán qua QR Code
             </DialogTitle>
             <DialogDescription>
-              Quét mã QR để thanh toán công nợ #{qrPaymentDebt?.id.slice(-6).toUpperCase()}
+              Quét mã QR để thanh toán công nợ {qrPaymentDebt?.id}
             </DialogDescription>
           </DialogHeader>
           
@@ -383,7 +425,7 @@ export default function CustomerDebtTab({
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Mã công nợ:</span>
                       <span className="text-sm font-mono">
-                        #{qrPaymentDebt.id.slice(-6).toUpperCase()}
+                        {qrPaymentDebt.id}
                       </span>
                     </div>
                   </div>

@@ -75,7 +75,7 @@ const ProductCard = ({
             <Button
               variant="destructive"
               size="icon"
-              className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full"
+              className="absolute top-1 right-1 z-30 h-6 w-6 rounded-full"
               onClick={async (e) => {
                 e.stopPropagation();
                 try {
@@ -87,21 +87,19 @@ const ProductCard = ({
               }}
               title="Loại khỏi gian hàng"
             >
-              <XCircle className="h-4 w-4" />
+              <XCircle className="h-3 w-3" />
             </Button>
           )}
           
           {/* Stock status badge in top-right corner of image */}
-          <div className="absolute top-2 right-2 z-20">
+          <div className="absolute top-8 right-1 z-20">
             {hasFullAccessRights && (
-              <div className="mb-8"> {/* Add margin to avoid overlap with remove button */}
-                <div className={`text-xs font-bold px-2 py-1 rounded-full shadow-md ${
-                  hasStock 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-red-500 text-white'
-                }`}>
-                  {hasStock ? '● Còn hàng' : '○ Hết hàng'}
-                </div>
+              <div className={`text-xs font-bold px-2 py-1 rounded-full shadow-md ${
+                hasStock 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-red-500 text-white'
+              }`}>
+                {hasStock ? '● Còn hàng' : '○ Hết hàng'}
               </div>
             )}
             {!hasFullAccessRights && (
@@ -624,6 +622,10 @@ interface StorefrontTabProps {
   unitOptions: string[];
   onUpdateThumbnail?: (productId: string, thumbnailImage: string) => Promise<void>;
   onDialogStateChange?: (isOpen: boolean) => void;
+  storeLogo?: string;
+  shopInfo?: { name?: string; address?: string; phone?: string; } | null;
+  facebookUrl?: string;
+  zaloQRCodeUrl?: string;
 }
 
 export default function StorefrontTab({ 
@@ -639,7 +641,11 @@ export default function StorefrontTab({
   sizeOptions,
   unitOptions,
   onUpdateThumbnail,
-  onDialogStateChange
+  onDialogStateChange,
+  storeLogo,
+  shopInfo,
+  facebookUrl = "https://www.facebook.com/nguyet.nguyen.118646",
+  zaloQRCodeUrl
 }: StorefrontTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('sold-desc');
@@ -1014,6 +1020,99 @@ export default function StorefrontTab({
         sizeOptions={sizeOptions}
         unitOptions={unitOptions}
       />
+
+      {/* Footer Section */}
+      <div className="py-6 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 rounded-2xl shadow-2xl relative overflow-hidden mt-12">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+        <div className="relative z-10 px-6">
+          <h1 className="text-4xl font-bold text-white mb-6 text-center drop-shadow-lg">
+            {shopInfo?.name || "Cửa Hàng Hoa Công Nguyệt"}
+          </h1>
+          
+          {/* Store Info, Social Media and Logo in one row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 items-start">
+            {/* Column 1 - Address and Hotline */}
+            <div className="text-left">
+              <div className="text-white/90 space-y-2">
+                <p className="text-lg font-medium drop-shadow-md">
+                  📍 Địa chỉ: {shopInfo?.address || "Chợ Hoa-Mê Linh-Hà Nội"}
+                </p>
+                <p className="text-lg font-medium drop-shadow-md">
+                  📞 Hotline: {shopInfo?.phone || "0976778612"}
+                </p>
+              </div>
+            </div>
+            
+            {/* Column 2 - Social Media */}
+            <div className="text-center">
+              <div className="flex flex-col items-center space-y-2">
+                <div className="text-white/90 text-lg font-medium">
+                  🔗 Kết nối
+                </div>
+                <div className="flex items-center gap-3 justify-center">
+                  <a 
+                    href={facebookUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="bg-white/20 backdrop-blur-sm p-3 rounded-full text-white font-semibold hover:bg-white/30 transition-all duration-300 flex items-center justify-center" 
+                    title="Trang Facebook của chúng tôi"
+                  >
+                    <Image 
+                      src="/icons/icon facebook.png" 
+                      alt="Facebook" 
+                      width={24} 
+                      height={24} 
+                      className="w-6 h-6"
+                    />
+                  </a>
+                  <a
+                    href="https://zalo.me/0976778612"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-white/20 backdrop-blur-sm p-3 rounded-full text-white font-semibold hover:bg-white/30 transition-all duration-300 flex items-center justify-center" 
+                    title="Kết nối Zalo"
+                  >
+                    <Image 
+                      src="/icons/icon zalo.webp" 
+                      alt="Zalo" 
+                      width={24} 
+                      height={24} 
+                      className="w-6 h-6"
+                    />
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            {/* Column 3 - Logo */}
+            <div className="text-right">
+              <div className="flex justify-end">
+                {/* Logo cửa hàng */}
+                <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full overflow-hidden flex items-center justify-center shadow-lg">
+                  <Image 
+                    src={storeLogo || "https://via.placeholder.com/96x96/FF69B4/FFFFFF?text=LOGO"} 
+                    alt={shopInfo?.name ? `Logo ${shopInfo.name}` : "Logo Cửa Hàng"} 
+                    width={96} 
+                    height={96} 
+                    className="rounded-full object-cover w-full h-full"
+                    onError={(e) => {
+                      // Fallback về logo mặc định nếu không tải được hình tùy chỉnh
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDgiIGN5PSI0OCIgcj0iNDgiIGZpbGw9IiNGRkY1RjUiLz4KPHN2ZyB4PSIyNCIgeT0iMjQiIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjRkY2Qzk0Ii8+CjwvcGF0aD4KPHRleHQgeD0iNDgiIHk9IjU2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMzMzIiBmb250LXNpemU9IjEwIiBmb250LWZhbWlseT0iVmVyZGFuYSI+TG9nbzwvdGV4dD4KPC9zdmc+Cjwvc3ZnPgo8L3N2Zz4K';
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom copyright */}
+          <div className="text-center border-t border-white/20 pt-4">
+            <p className="text-white/80 text-sm">
+              © 2025 Cửa Hàng Hoa Công Nguyệt
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

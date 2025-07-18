@@ -41,7 +41,7 @@ export const logDebtCreation = async (
     date: new Date().toISOString(),
     employeeId,
     employeeName,
-    notes: `Tạo công nợ từ ${invoiceId ? 'hóa đơn' : 'nhập hàng'}`,
+    notes: `Tạo công nợ từ ${invoiceId ? `hóa đơn ${invoiceId}` : 'nhập hàng'}`,
     metadata: {
       originalAmount: debtAmount,
     }

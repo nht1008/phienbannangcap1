@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { SmartSearchBar, SearchHighlight } from '@/components/shared/SmartSearchBar';
 import { useDebtSearch } from '@/hooks/use-smart-search';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DebtTabProps {
   debts: Debt[];
@@ -32,6 +33,7 @@ export function DebtTab({
   currentUser,
   isCurrentUserCustomer
 }: DebtTabProps) {
+  const isMobile = useIsMobile();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
   // Filter debts based on user type
@@ -147,20 +149,23 @@ export function DebtTab({
                 </div>
               </div>
           ) : (
-          <ScrollArea className="h-full"> 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">STT</TableHead>
-                  <TableHead>Khách hàng</TableHead>
-                  <TableHead>Thời gian</TableHead>
-                  <TableHead className="text-right">Tiền nợ</TableHead>
-                    <TableHead className="text-right text-green-600">Đã trả</TableHead>
-                    <TableHead className="text-right text-red-600">Còn nợ</TableHead>
-                  <TableHead className="text-center">Chức năng</TableHead>
-                  <TableHead className="text-center">Trạng thái</TableHead>
-                </TableRow>
-              </TableHeader>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block h-full">
+                <ScrollArea className="h-full"> 
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">STT</TableHead>
+                        <TableHead>Khách hàng</TableHead>
+                        <TableHead>Thời gian</TableHead>
+                        <TableHead className="text-right">Tiền nợ</TableHead>
+                          <TableHead className="text-right text-green-600">Đã trả</TableHead>
+                          <TableHead className="text-right text-red-600">Còn nợ</TableHead>
+                        <TableHead className="text-center">Chức năng</TableHead>
+                        <TableHead className="text-center">Trạng thái</TableHead>
+                      </TableRow>
+                    </TableHeader>
               <TableBody>
                 {filteredDebts.map((debt, index) => {
                   const debtDate = new Date(debt.date);
@@ -237,7 +242,103 @@ export function DebtTab({
               </TableBody>
             </Table>
           </ScrollArea>
-          )}
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden h-full">
+          <ScrollArea className="h-full">
+            <div className="space-y-3">
+              {filteredDebts.map((debt, index) => {
+                const debtDate = new Date(debt.date);
+                return (
+                  <Card key={debt.id} className={`border-l-4 ${debt.status === 'Đã thanh toán' ? 'border-l-green-500' : 'border-l-red-500'}`}>
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">#{index + 1}</span>
+                            <div>
+                              <h3 className="font-medium">
+                                <SearchHighlight 
+                                  text={debt.customerName} 
+                                  searchQuery={searchQuery}
+                                />
+                              </h3>
+                              <p className="text-xs text-muted-foreground">
+                                {debtDate.toLocaleDateString('vi-VN')} {debtDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          </div>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-semibold ${debt.status === 'Đã thanh toán' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}
+                          >
+                            <SearchHighlight 
+                              text={debt.status} 
+                              searchQuery={searchQuery}
+                            />
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="text-center">
+                            <p className="text-muted-foreground text-xs">Tiền nợ</p>
+                            <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
+                              {formatCurrencyForUser(debt.originalAmount, isCurrentUserCustomer)}
+                            </span>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-muted-foreground text-xs">Đã trả</p>
+                            <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
+                              {formatCurrencyForUser(debt.amountPaid, isCurrentUserCustomer)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-center">
+                          <p className="text-muted-foreground text-xs mb-1">Còn nợ</p>
+                          <span className="bg-red-600 text-white px-3 py-1 rounded font-bold">
+                            {formatCurrencyForUser(debt.remainingAmount, isCurrentUserCustomer)}
+                          </span>
+                        </div>
+
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onOpenPaymentDialog(debt)}
+                            disabled={debt.status === 'Đã thanh toán'}
+                            className="flex-1"
+                          >
+                            Trả nợ
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              // For customers, always show their own history regardless of which debt they click
+                              const customerIdToShow = isCurrentUserCustomer && currentUser 
+                                ? currentUser.uid 
+                                : (debt.customerId || debt.customerName);
+                              const customerNameToShow = isCurrentUserCustomer && currentUser
+                                ? debt.customerName // Use the customer name from the debt
+                                : debt.customerName;
+                              openCustomerDebtHistoryDialog(customerIdToShow, customerNameToShow);
+                            }}
+                            className="flex-1"
+                          >
+                            Lịch sử
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
+      </>
+    )}
         </div>
       </CardContent>
     </Card>

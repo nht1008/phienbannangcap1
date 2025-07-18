@@ -23,6 +23,7 @@ import VipTierBadge from '@/components/shared/VipTierBadge';
 import type { Customer } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { formatCompactCurrency } from '@/lib/utils';
+import { DEFAULT_BANK_ACCOUNT, generateBankQRContent, generatePaymentDescription } from '@/lib/sepay';
 
 interface CustomerCartSheetProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ interface CustomerCartSheetProps {
   customer: Customer | null;
   onUpdateQuantity: (itemId: string, newQuantity: string) => void;
   onRemoveItem: (itemId: string) => void;
-  onPlaceOrder: (discountAmount: number, redeemedPoints?: {points: number, value: number}) => void;
+  onPlaceOrder: (discountAmount: number, redeemedPoints?: {points: number, value: number}) => Promise<string>; // Now returns orderId
   inventory: Product[];
   invoices: Invoice[];
   onOpenNoteEditor: (itemId: string) => void;
@@ -57,6 +58,8 @@ export function CustomerCartSheet({
   const [isRedeemDialogOpen, setIsRedeemDialogOpen] = useState(false);
   const [redeemedPoints, setRedeemedPoints] = useState({ points: 0, value: 0 });
   const [isQRDialogOpen, setIsQRDialogOpen] = useState(false);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [orderCreated, setOrderCreated] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -65,6 +68,8 @@ export function CustomerCartSheet({
       setAppliedTierDiscount({ amount: 0, percentage: 0 });
       setTierDiscountInfo({});
       setIsQRDialogOpen(false);
+      setCurrentOrderId(null);
+      setOrderCreated(false);
     }
   }, [isOpen]);
 
@@ -136,9 +141,43 @@ export function CustomerCartSheet({
     });
   };
  
-   const handlePlaceOrder = () => {
-     setIsQRDialogOpen(true);
-   };
+  const handlePlaceOrder = async () => {
+    if (!orderCreated) {
+      try {
+        // Create order first and get the orderId
+        const redeemedPointsData = redeemedPoints && 
+                                  typeof redeemedPoints.points === 'number' && 
+                                  typeof redeemedPoints.value === 'number' && 
+                                  redeemedPoints.points > 0 && 
+                                  redeemedPoints.value > 0 ? {
+          points: redeemedPoints.points,
+          value: redeemedPoints.value
+        } : undefined;
+        
+        const orderId = await onPlaceOrder(
+          appliedTierDiscount.amount > 0 ? appliedTierDiscount.amount : (redeemedPoints?.value || 0), 
+          redeemedPointsData
+        );
+        
+        setCurrentOrderId(orderId);
+        setOrderCreated(true);
+        toast({ 
+          title: "Đơn hàng đã tạo", 
+          description: `Mã đơn hàng: ${orderId}. Vui lòng thanh toán để hoàn tất.`,
+          duration: 3000
+        });
+      } catch (error) {
+        toast({ 
+          title: "Lỗi", 
+          description: "Không thể tạo đơn hàng. Vui lòng thử lại.",
+          variant: "destructive",
+          duration: 3000
+        });
+        return;
+      }
+    }
+    setIsQRDialogOpen(true);
+  };
   
   const finalTotal = totalAmount - appliedTierDiscount.amount - redeemedPoints.value;
   
@@ -510,26 +549,65 @@ export function CustomerCartSheet({
     <Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center">Thanh toán bằng QR Code</DialogTitle>
+          <DialogTitle className="text-center">Thanh toán qua chuyển khoản</DialogTitle>
           <DialogDescription className="text-center">
-            Vui lòng quét mã QR để thanh toán qua chuyển khoản ngân hàng
+            Vui lòng quét mã QR hoặc chuyển khoản theo thông tin bên dưới
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-6 space-y-4">
-          <QRCodeCanvas
-              value={`bank_account_info_here`} // Replace with actual bank info
-              size={240}
-              bgColor={"#ffffff"}
-              fgColor={"#000000"}
-              level={"L"}
-              includeMargin={true}
-          />
+          {currentOrderId && (
+            <>
+              <QRCodeCanvas
+                value={generateBankQRContent({
+                  accountNumber: DEFAULT_BANK_ACCOUNT.accountNumber,
+                  accountName: DEFAULT_BANK_ACCOUNT.accountName,
+                  amount: finalTotal,
+                  description: generatePaymentDescription(currentOrderId, customer?.name),
+                  bankCode: DEFAULT_BANK_ACCOUNT.bankCode
+                })}
+                size={240}
+                bgColor={"#ffffff"}
+                fgColor={"#000000"}
+                level={"M"}
+                includeMargin={true}
+              />
+              
+              {/* Bank Account Info */}
+              <div className="w-full p-4 bg-muted/20 rounded-lg space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="font-medium">Ngân hàng:</span>
+                  <span>{DEFAULT_BANK_ACCOUNT.bankName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Số tài khoản:</span>
+                  <span className="font-mono">{DEFAULT_BANK_ACCOUNT.accountNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Tên tài khoản:</span>
+                  <span>{DEFAULT_BANK_ACCOUNT.accountName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Số tiền:</span>
+                  <span className="font-bold text-primary">{finalTotal.toLocaleString('vi-VN')} VNĐ</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Nội dung:</span>
+                  <span className="font-mono text-xs">{generatePaymentDescription(currentOrderId, customer?.name)}</span>
+                </div>
+              </div>
+              
+              {/* Auto confirmation note */}
+              <div className="w-full p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800 text-center">
+                  ✨ <strong>Tự động xác nhận:</strong> Đơn hàng sẽ được xác nhận tự động sau khi chuyển khoản thành công
+                </p>
+              </div>
+            </>
+          )}
+          
           <div className="text-center space-y-2">
-            <p className="text-lg font-bold text-primary">
-              Tổng tiền: {formatCompactCurrency(finalTotal)}
-            </p>
             <p className="text-sm text-muted-foreground">
-              Nội dung: Thanh toan don hang
+              Mã đơn hàng: <span className="font-mono font-bold">{currentOrderId}</span>
             </p>
             {customer && (
               <p className="text-xs text-muted-foreground">
@@ -542,47 +620,34 @@ export function CustomerCartSheet({
           <div className="flex gap-2 w-full">
             <Button 
               onClick={() => {
-                console.log('🔍 CustomerCartSheet onClick - redeemedPoints state:', {
-                  redeemedPoints,
-                  redeemedPoints_type: typeof redeemedPoints,
-                  points: redeemedPoints?.points,
-                  value: redeemedPoints?.value,
-                  points_type: typeof redeemedPoints?.points,
-                  value_type: typeof redeemedPoints?.value
-                });
-                
-                const redeemedPointsData = redeemedPoints && 
-                                          typeof redeemedPoints.points === 'number' && 
-                                          typeof redeemedPoints.value === 'number' && 
-                                          redeemedPoints.points > 0 && 
-                                          redeemedPoints.value > 0 ? {
-                  points: redeemedPoints.points,
-                  value: redeemedPoints.value
-                } : undefined;
-                
-                console.log('🔍 redeemedPointsData created:', redeemedPointsData);
-                
-                onPlaceOrder(
-                  appliedTierDiscount.amount > 0 ? appliedTierDiscount.amount : (redeemedPoints?.value || 0), 
-                  redeemedPointsData
-                );
                 setIsQRDialogOpen(false);
+                // Don't reset order as payment might be processing
                 toast({ 
-                  title: "Thành công", 
-                  description: "Đơn hàng đã được xử lý. Cảm ơn bạn đã mua hàng!",
+                  title: "Chờ thanh toán", 
+                  description: "Đơn hàng đã được tạo. Vui lòng hoàn tất thanh toán.",
                   duration: 3000
                 });
               }}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-            >
-              Xác nhận đã thanh toán
-            </Button>
-            <Button 
-              onClick={() => setIsQRDialogOpen(false)}
               variant="outline"
               className="flex-1"
             >
-              Hủy
+              Đóng
+            </Button>
+            <Button 
+              onClick={() => {
+                if (currentOrderId) {
+                  navigator.clipboard?.writeText(currentOrderId);
+                  toast({ 
+                    title: "Đã sao chép", 
+                    description: "Mã đơn hàng đã được sao chép vào clipboard",
+                    duration: 2000
+                  });
+                }
+              }}
+              variant="outline"
+              className="flex-1"
+            >
+              Sao chép mã
             </Button>
           </div>
         </div>
